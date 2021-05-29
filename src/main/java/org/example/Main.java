@@ -25,42 +25,45 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
-
     public static final String APIKEY_FILE = "conf/api_key";
 
-    public static final long SPAM_TIME_OUT_MIN = 15;
-    public static final long SPAM_TIME_OUT_MAX = 120;
+    public static final String COMMAND_PREFIX = "kc ";
 
-    private static Map<String, Command> commands;
-
-    private static Map<User, AtomicLong> userTimeOutMap;
-
-    private static PSQLManager psqlManager;
+    public static final String INITIAL_BOT_STATUS = COMMAND_PREFIX + "help";
 
     private static final long ONE_SECOND = 1000;
     private static final long ONE_MINUTE = 60 * ONE_SECOND;
     private static final long ONE_HOUR = 60 * ONE_MINUTE;
     private static final long ONE_DAY = 24 * ONE_HOUR;
 
-    private static final long DAILY_ALLOWANCE = 10000;
-
-    private static final int MAX_RANKS = 15;
-
-    private static CopyOnWriteArrayList<Job> currentJobs;
-
-    private static HashMap<User, AtomicLong> userWorkTimeOutMap;
+    public static final long SPAM_TIME_OUT_MIN = 15;
+    public static final long SPAM_TIME_OUT_MAX = 120;
 
     private static final long USER_WORK_TIME_OUT = ONE_HOUR / 1000;
 
-    private static ArrayList<BJGame> BJGamesList;
+    private static final long DAILY_ALLOWANCE = 10000;
+
+    private static final int MAX_RANKS_TO_BE_DISPLAYED = 15;
+
+    private static PSQLManager psqlManager;
+
+    private static Map<String, Command> commandsMap;
+
+    private static HashMap<User, AtomicLong> userSpamCooldownTimerMap;
+    private static HashMap<User, AtomicLong> userWorkCooldownTimerMap;
+
+    private static CopyOnWriteArrayList<Job> currentWorkingJobsList;
+
+    private static ArrayList<BJGame> runningBJGamesList;
 
     public static void main(String[] args) {
 
-        BJGamesList = new ArrayList<>();
+        userWorkCooldownTimerMap = new HashMap<>();
+        userSpamCooldownTimerMap = new HashMap<>();
+        currentWorkingJobsList = new CopyOnWriteArrayList<>();
+        runningBJGamesList = new ArrayList<>();
 
-        userWorkTimeOutMap = new HashMap<>();
-
-        currentJobs = new CopyOnWriteArrayList<>();
+        commandsMap = new HashMap<>();
 
         try {
             psqlManager = new PSQLManager();
@@ -73,9 +76,35 @@ public class Main {
             return;
         }
 
-        userTimeOutMap = new HashMap<>();
+        FileReader fileReader;
+        try {
+            fileReader = new FileReader(APIKEY_FILE);
+        } catch (FileNotFoundException e) {
+            System.out.println("File: " + APIKEY_FILE + " not found. Please make the file and type the discord bot's API key in it.");
+            return;
+        }
+        BufferedReader reader = new BufferedReader(fileReader);
+        String apiKey;
+        try {
+            apiKey = reader.readLine();
+        } catch (IOException e) {
+            System.out.println("An IO exception occurred while reading file: " + APIKEY_FILE);
+            return;
+        }
 
-        String helpMenu = "Use prefix: kc\n" +
+        GatewayDiscordClient client = DiscordClientBuilder.create(apiKey)
+                .build().login().block();
+
+        client.getEventDispatcher().on(ReadyEvent.class)
+                .subscribe(event -> {
+                    User self = event.getSelf();
+                    System.out.printf(
+                            "Logged in as %s#%s%n", self.getUsername(), self.getDiscriminator()
+                    );
+                    client.updatePresence(Presence.online(Activity.watching(INITIAL_BOT_STATUS))).block();
+                });
+
+        String helpMenu = "Use prefix: " + COMMAND_PREFIX + "\n" +
                 "Commands:\n" +
                 "1) help\n" +
                 "2) ping\n" +
@@ -117,58 +146,42 @@ public class Main {
                 " said it out of its own free will");
         helpCommandsMap.put("bj", "bj <amount> - gamble your money away in a game of blackjack");
 
-        String prefix = "kc ";
-
-        FileReader fileReader;
-        try {
-            fileReader = new FileReader(APIKEY_FILE);
-        } catch (FileNotFoundException e) {
-            System.out.println("File: " + APIKEY_FILE + " not found. Please make the file and type the discord bot's API key in it.");
-            return;
-        }
-        BufferedReader reader = new BufferedReader(fileReader);
-        String apiKey;
-        try {
-            apiKey = reader.readLine();
-        } catch (IOException e) {
-            System.out.println("An IO exception occurred while reading file: " + APIKEY_FILE);
-            return;
-        }
-
-        GatewayDiscordClient client = DiscordClientBuilder.create(apiKey)
-                .build().login().block();
-
-        client.getEventDispatcher().on(ReadyEvent.class)
-                .subscribe(event -> {
-                    User self = event.getSelf();
-                    System.out.printf(
-                            "Logged in as %s#%s%n", self.getUsername(), self.getDiscriminator()
-                    );
-                    client.updatePresence(Presence.online(Activity.watching(prefix + "help"))).block();
-                });
-
-        commands = new HashMap<>();
-
-        commands.put("help", (event, argv, argvStr) -> {
+        commandsMap.put("help", (event, argv, argvStr) -> {
             if (argv.length == 0) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Help Menu", helpMenu, Color.DISCORD_BLACK);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DISCORD_BLACK);
+                    embed.setDescription(helpMenu);
+                    embed.setTitle("Help Menu");
+                }).block();
             } else {
                 String helpMessage = helpCommandsMap.get(argv[0]);
                 if (helpMessage == null) {
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Help Menu", "Not a valid command", Color.DISCORD_BLACK);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DISCORD_BLACK);
+                        embed.setDescription("Not a valid command");
+                        embed.setTitle("Help Menu");
+                    }).block();
                 } else {
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Help Menu", helpMessage, Color.DISCORD_BLACK);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DISCORD_BLACK);
+                        embed.setDescription(helpMessage);
+                        embed.setTitle("Help Menu");
+                    }).block();
                 }
             }
         });
 
-        commands.put("ping", (event, argv, argvStr) -> event.getMessage()
+        commandsMap.put("ping", (event, argv, argvStr) -> event.getMessage()
                 .getChannel().block()
                 .createMessage("Pong!").block());
 
-        commands.put("ask", (event, argv, argvStr) -> {
+        commandsMap.put("ask", (event, argv, argvStr) -> {
              if (argvStr.length() == 0) {
-                 createMessageWithEmbed(event.getMessage().getChannel().block(), "Ask kushalCord", "You didn't ask a question, genius.", Color.CYAN);
+                 event.getMessage().getChannel().block().createEmbed((embed) -> {
+                     embed.setColor(Color.CYAN);
+                     embed.setDescription("You didn't ask a question, genius");
+                     embed.setTitle("Ask kushalCord");
+                 }).block();
                  return;
              }
              String[] answers = {"Yes",
@@ -185,10 +198,14 @@ public class Main {
                     "It depends",
                     "hmmmmm idk"};
              String answer = answers[(int)(Math.random() * answers.length)];
-             createMessageWithEmbed(event.getMessage().getChannel().block(), "Ask kushalCord", answer, Color.CYAN);
+             event.getMessage().getChannel().block().createEmbed((embed) -> {
+                embed.setColor(Color.CYAN);
+                embed.setDescription(answer);
+                embed.setTitle("Ask kushalCord");
+             }).block();
         });
 
-        commands.put("say", (event, argv, argvStr) -> {
+        commandsMap.put("say", (event, argv, argvStr) -> {
             Message msg = event.getMessage();
             if (argv.length == 0) {
                 msg.getChannel().block().createMessage("I can't just say nothing. What are you trying to do?").block();
@@ -198,54 +215,82 @@ public class Main {
             }
         });
 
-        commands.put("spam", (event, argv, argvStr) -> {
+        commandsMap.put("spam", (event, argv, argvStr) -> {
             MessageChannel channel = event.getMessage().getChannel().block();
             User spammer = event.getMessage().getAuthor().get();
             try {
-                if (userTimeOutMap.get(spammer) == null || userTimeOutMap.get(spammer).get() == 0) {
+                if (userSpamCooldownTimerMap.get(spammer) == null || userSpamCooldownTimerMap.get(spammer).get() == 0) {
                     int times = Integer.parseInt(argv[0]);
                     if (times > 20) {
-                        createMessageWithEmbed(channel, "Spammer", "Woah! Hold on there! You don't wanna spam **too** much now do you?", Color.PINK);
+                        event.getMessage().getChannel().block().createEmbed((embed) -> {
+                            embed.setColor(Color.PINK);
+                            embed.setDescription("Woah! Hold on there! You don't wanna spam **too** much now do you?");
+                            embed.setTitle("Spammer");
+                        }).block();
                         return;
                     }
                     String toSpam = argvStr.substring(argv[0].length());
                     if (argv.length == 1) {
-                        createMessageWithEmbed(channel, "Spammer", "You didn't tell me what to spam", Color.PINK);
+                        event.getMessage().getChannel().block().createEmbed((embed) -> {
+                            embed.setColor(Color.PINK);
+                            embed.setDescription("You didn't tell me what to spam");
+                            embed.setTitle("Spammer");
+                        }).block();
                         return;
                     }
                     for (int i = 0; i < times; i++) {
                         channel.createMessage(toSpam).block();
                     }
-                    userTimeOutMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
+                    userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
                 } else {
-                    createMessageWithEmbed(channel, "Spammer", "Stop spamming so much. You'll annoy everyone!", Color.PINK);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.PINK);
+                        embed.setDescription("Stop spamming so much. You'll annoy everyone!");
+                        embed.setTitle("Spammer");
+                    }).block();
                 }
             } catch (NumberFormatException e) {
                 int times = 5;
-                if (userTimeOutMap.get(spammer) == null || userTimeOutMap.get(spammer).get() == 0) {
+                if (userSpamCooldownTimerMap.get(spammer) == null || userSpamCooldownTimerMap.get(spammer).get() == 0) {
                     String toSpam = argvStr;
                     if (argv.length == 0) {
-                        createMessageWithEmbed(channel, "Spammer", "You didn't tell me what to spam", Color.PINK);
+                        event.getMessage().getChannel().block().createEmbed((embed) -> {
+                            embed.setColor(Color.PINK);
+                            embed.setDescription("You didn't tell me what to spam");
+                            embed.setTitle("Spammer");
+                        }).block();
                         return;
                     }
                     for (int i = 0; i < times; i++) {
                         channel.createMessage(toSpam).block();
                     }
-                    userTimeOutMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
+                    userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
                 } else {
-                    createMessageWithEmbed(channel, "Spammer", "Stop spamming so much. You'll annoy everyone!", Color.PINK);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.PINK);
+                        embed.setDescription("Stop spamming so much. You'll annoy everyone!");
+                        embed.setTitle("Spammer");
+                    }).block();
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
-                createMessageWithEmbed(channel, "Spammer", "Invalid arguments", Color.PINK);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.PINK);
+                    embed.setDescription("Invalid arguments");
+                    embed.setTitle("Spammer");
+                }).block();
             }
         });
 
-        commands.put("delete", (event, argv, argvStr) -> {
+        commandsMap.put("delete", (event, argv, argvStr) -> {
             TextChannel channel = (TextChannel) event.getMessage().getChannel().block();
             try {
                 int n = Integer.parseInt(argv[0]);
                 if (n < 1) {
-                    createMessageWithEmbed(channel, "Deleter", "Bruh, lol what is your problem?", Color.BROWN);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.BROWN);
+                        embed.setDescription("Bruh, lol what is your problem?");
+                        embed.setTitle("Deleter");
+                    }).block();
                     return;
                 }
                 channel.bulkDelete(channel.getMessagesBefore(channel.getLastMessageId().get())
@@ -254,16 +299,28 @@ public class Main {
                 ).blockLast();
                 event.getMessage().delete().block();
                 if (n == 1) {
-                    createMessageWithEmbed(channel, "Deleter", "1 message deleted", Color.BROWN);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.BROWN);
+                        embed.setDescription("1 message deleted");
+                        embed.setTitle("Deleter");
+                    }).block();
                 } else {
-                    createMessageWithEmbed(channel, "Deleter", n + " messages deleted", Color.BROWN);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.BROWN);
+                        embed.setDescription(n + " messages deleted");
+                        embed.setTitle("Deleter");
+                    }).block();
                 }
             } catch (NumberFormatException e) {
-                createMessageWithEmbed(channel, "Deleter", "Bruh, thats not a valid number", Color.BROWN);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.BROWN);
+                    embed.setDescription("Bruh, thats not a valid number");
+                    embed.setTitle("Deleter");
+                }).block();
             }
         });
 
-        commands.put("bal", (event, argv, argvStr) -> {
+        commandsMap.put("bal", (event, argv, argvStr) -> {
             Set<Snowflake> userMentionSet = event.getMessage().getUserMentionIds();
             if (userMentionSet.size() == 0) {
                 //if no one was mentioned
@@ -275,10 +332,13 @@ public class Main {
                         //then we must create the user
                         psqlManager.addAccount(user.getId().asString());
                     }
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank balance", "Your bank balance: " + bal, Color.GRAY_CHATEAU);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.GRAY_CHATEAU);
+                        embed.setDescription("Your bank balance: " + bal);
+                        embed.setTitle("Bank balance");
+                    }).block();
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
-                    return;
                 }
             } else {
                 //if someone was mentioned
@@ -290,7 +350,11 @@ public class Main {
                             psqlManager.addAccount(userId.asString());
                         }
                         User currentUser = client.getUserById(userId).block();
-                        createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank balance", currentUser.getUsername() + "'s bank balance: " + bal, Color.GRAY_CHATEAU);
+                        event.getMessage().getChannel().block().createEmbed((embed) -> {
+                            embed.setColor(Color.GRAY_CHATEAU);
+                            embed.setDescription(currentUser.getUsername() + "'s bank balance: " + bal);
+                            embed.setTitle("Bank balance");
+                        }).block();
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
@@ -298,7 +362,7 @@ public class Main {
             }
         });
 
-        commands.put("rank", (event, argv, argvStr) -> {
+        commandsMap.put("rank", (event, argv, argvStr) -> {
             Set<Snowflake> userMentionSet = event.getMessage().getUserMentionIds();
             if (userMentionSet.size() == 0) {
                 //if no one was mentioned
@@ -308,9 +372,17 @@ public class Main {
                     long xp = psqlManager.getXpOfUser(userId, guildId);
                     long level = calculateLevel(xp);
                     long nextLvlXp = calculateXpForLvl(level + 1);
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Xp Rank", "Ur xp: " + xp + "/" + nextLvlXp +
-                            "\n" + "Ur lvl: " + level +
-                            "\n" + "Ur rank: " + (psqlManager.getRankOfUser(userId, guildId) + 1) , Color.MAGENTA);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.MAGENTA);
+                        try {
+                            embed.setDescription("Ur xp: " + xp + "/" + nextLvlXp +
+                                    "\n" + "Ur lvl: " + level +
+                                    "\n" + "Ur rank: " + (psqlManager.getRankOfUser(userId, guildId) + 1));
+                        } catch (SQLException throwables) {
+                            throwables.printStackTrace();
+                        }
+                        embed.setTitle("Xp Rank");
+                    }).block();
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
@@ -323,11 +395,18 @@ public class Main {
                         long xp = psqlManager.getXpOfUser(userId, guildId);
                         long level = calculateLevel(xp);
                         long nextLvlXp = calculateXpForLvl(level + 1);
-                        createMessageWithEmbed(event.getMessage().getChannel().block(), "Xp Rank",
-                                "Rank of: " + client.getUserById(userIdSnowflake).block().getUsername() +
-                                "\n" + "Ur xp: " + xp + "/" + nextLvlXp +
-                                "\n" + "Ur lvl: " + level +
-                                "\n" + "Ur rank: " + (psqlManager.getRankOfUser(userId, guildId) + 1)  , Color.MAGENTA);
+                        event.getMessage().getChannel().block().createEmbed((embed) -> {
+                            embed.setColor(Color.MAGENTA);
+                            try {
+                                embed.setDescription("Rank of: " + client.getUserById(userIdSnowflake).block().getUsername() +
+                                        "\n" + "xp: " + xp + "/" + nextLvlXp +
+                                        "\n" + "lvl: " + level +
+                                        "\n" + "rank: " + (psqlManager.getRankOfUser(userId, guildId) + 1));
+                            } catch (SQLException throwables) {
+                                throwables.printStackTrace();
+                            }
+                            embed.setTitle("Xp Rank");
+                        }).block();
                     } catch (SQLException e) {
                         e.printStackTrace();
                         return;
@@ -336,19 +415,27 @@ public class Main {
             }
         });
 
-        commands.put("toprankers", (event, argv, argvStr) -> {
+        commandsMap.put("toprankers", (event, argv, argvStr) -> {
             int n = 0;
             try {
                 n = Integer.parseInt(argv[0]);
             } catch (NumberFormatException e) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Xp Top Rankers", "Invalid number, bruh", Color.MOON_YELLOW);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.MOON_YELLOW);
+                    embed.setDescription("Invalid number, bruh");
+                    embed.setTitle("Xp Top Rankers");
+                }).block();
                 return;
             } catch (IndexOutOfBoundsException e) {
                 n = 10;
             }
-            if (n > MAX_RANKS) {
+            if (n > MAX_RANKS_TO_BE_DISPLAYED) {
                 //if max ranks have reached.
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Xp Top Rankers", "I cant print that many ranks", Color.MOON_YELLOW);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.MOON_YELLOW);
+                    embed.setDescription("I cant print that many ranks");
+                    embed.setTitle("Xp Top Rankers");
+                }).block();
                 return;
             }
             String guildId = event.getMessage().getGuildId().get().asString();
@@ -366,10 +453,15 @@ public class Main {
                     builder.append(i + 1).append(") ").append(client.getUserById(Snowflake.of(id)).block().getTag()).append(" - lvl ").append(calculateLevel(psqlManager.getXpOfUser(id, event.getMessage().getGuildId().get().asString()))).append("\n");
                 } catch (SQLException ignored) {}
             }
-            createMessageWithEmbed(event.getMessage().getChannel().block(), "Xp Top Rankers", "Top " + n + " ranks:\n" + builder.toString(), Color.MOON_YELLOW);
+            int finalN = n;
+            event.getMessage().getChannel().block().createEmbed((embed) -> {
+                embed.setColor(Color.MOON_YELLOW);
+                embed.setDescription("Top " + finalN + " ranks:\n" + builder.toString());
+                embed.setTitle("Xp Top Rankers");
+            }).block();
         });
 
-        commands.put("daily", (event, argv, argvStr) -> {
+        commandsMap.put("daily", (event, argv, argvStr) -> {
             User user = event.getMessage().getAuthor().get();
             try {
                 long dailyTaken = psqlManager.getDailyTaken(user.getId().asString());
@@ -380,35 +472,59 @@ public class Main {
                 }
                 if (dailyTaken + ONE_DAY <= System.currentTimeMillis()) {
                     psqlManager.deposit(user.getId().asString(), DAILY_ALLOWANCE);
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Get Daily Allowance", "Added " + DAILY_ALLOWANCE + " kc coins to your account", Color.DEEP_LILAC);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_LILAC);
+                        embed.setDescription("Added " + DAILY_ALLOWANCE + " kc coins to your account");
+                        embed.setTitle("Get Daily Allowance");
+                    }).block();
                     psqlManager.setDailyTaken(user.getId().asString(), System.currentTimeMillis());
                 } else {
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Get Daily Allowance", "You've already received your daily kc coins allowance. Wait another 24 hours for more coins!", Color.DEEP_LILAC);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_LILAC);
+                        embed.setDescription("You've already received your daily kc coins allowance. Wait another 24 hours for more coins!");
+                        embed.setTitle("Get Daily Allowance");
+                    }).block();
                 }
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
         });
 
-        commands.put("transfer", (event, argv, argvStr) -> {
+        commandsMap.put("transfer", (event, argv, argvStr) -> {
             long toTransfer = 0;
             try {
                 toTransfer = Long.parseLong(argv[0]);
                 if (toTransfer < 1) {
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank Transfer Request", "Bruh, what are you trying to do?", Color.DARK_GOLDENROD);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DARK_GOLDENROD);
+                        embed.setDescription("Bruh, what are you trying to do?");
+                        embed.setTitle("Bank Transfer Request");
+                    }).block();
                     return;
                 }
             } catch (NumberFormatException e) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank Transfer Request", "Yo, I can't transfer " + argv[0] + " coins. What are you trying to do?", Color.DARK_GOLDENROD);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DARK_GOLDENROD);
+                    embed.setDescription("Yo, I can't transfer " + argv[0] + " coins. What are you trying to do?");
+                    embed.setTitle("Bank Transfer Request");
+                }).block();
                 return;
             } catch (ArrayIndexOutOfBoundsException e) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank Transfer Request", "Invalid usage syntax", Color.DARK_GOLDENROD);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DARK_GOLDENROD);
+                    embed.setDescription("Invalid usage syntax");
+                    embed.setTitle("Bank Transfer Request");
+                }).block();
                 return;
             }
             User user = event.getMessage().getAuthor().get();
             try {
                 if (toTransfer > psqlManager.getBalance(user.getId().asString())) {
-                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank Transfer Request", "You cant transfer more money than you own!", Color.DARK_GOLDENROD);
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DARK_GOLDENROD);
+                        embed.setDescription("You cant transfer more money than you own!");
+                        embed.setTitle("Bank Transfer Request");
+                    }).block();
                     return;
                 }
             } catch (SQLException e) {
@@ -416,7 +532,11 @@ public class Main {
             }
             Set<Snowflake> mentionIdSet = event.getMessage().getUserMentionIds();
             if (mentionIdSet.size() == 0) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank Transfer Request", "You haven't told me who to send the money to!", Color.DARK_GOLDENROD);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DARK_GOLDENROD);
+                    embed.setDescription("You haven't told me who to send the money to!");
+                    embed.setTitle("Bank Transfer Request");
+                }).block();
                 return;
             }
             Snowflake user2Id = (Snowflake)mentionIdSet.toArray()[0];
@@ -436,46 +556,75 @@ public class Main {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            createMessageWithEmbed(event.getMessage().getChannel().block(), "Bank Transfer Request", "Sucessfully transferred " + toTransfer, Color.DARK_GOLDENROD);
+            long finalToTransfer = toTransfer;
+            event.getMessage().getChannel().block().createEmbed((embed) -> {
+                embed.setColor(Color.DARK_GOLDENROD);
+                embed.setDescription("Sucessfully transferred " + finalToTransfer);
+                embed.setTitle("Bank Transfer Request");
+            }).block();
         });
 
-        commands.put("work", (event, argv, argvStr) -> {
-            if (userWorkTimeOutMap.get(event.getMessage().getAuthor().get()) == null
-                    || userWorkTimeOutMap.get(event.getMessage().getAuthor().get()).get() == 0) {
-                userWorkTimeOutMap.put(event.getMessage().getAuthor().get(), new AtomicLong(USER_WORK_TIME_OUT));
+        commandsMap.put("work", (event, argv, argvStr) -> {
+            if (userWorkCooldownTimerMap.get(event.getMessage().getAuthor().get()) == null
+                    || userWorkCooldownTimerMap.get(event.getMessage().getAuthor().get()).get() == 0) {
+                userWorkCooldownTimerMap.put(event.getMessage().getAuthor().get(), new AtomicLong(USER_WORK_TIME_OUT));
             } else {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Work Application", "You've already finished your one-hour shift. Take a break!", Color.DISCORD_WHITE);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DISCORD_WHITE);
+                    embed.setDescription("You've already finished your one-hour shift. Take a break!");
+                    embed.setTitle("Work Application");
+                }).block();
                 return;
             }
             try {
                 String jobName = argv[0];
                 Job job = new Job(event, jobName);
-                currentJobs.add(job);
+                currentWorkingJobsList.add(job);
             } catch (ArrayIndexOutOfBoundsException e) {
-                userWorkTimeOutMap.put(event.getMessage().getAuthor().get(), new AtomicLong(0));
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Work Application", "You haven't told me what job you want to do!", Color.DISCORD_WHITE);
+                userWorkCooldownTimerMap.put(event.getMessage().getAuthor().get(), new AtomicLong(0));
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DISCORD_WHITE);
+                    embed.setDescription("You haven't told me what job you want to do!");
+                    embed.setTitle("Work Application");
+                }).block();
             } catch (InvalidJobException e) {
-                userWorkTimeOutMap.put(event.getMessage().getAuthor().get(), new AtomicLong(0));
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "Work Application", "Ain't nobody got no time for that kind of a job!", Color.DISCORD_WHITE);
+                userWorkCooldownTimerMap.put(event.getMessage().getAuthor().get(), new AtomicLong(0));
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DISCORD_WHITE);
+                    embed.setDescription("Ain't nobody got no time for that kind of a job!");
+                    embed.setTitle("Work Application");
+                }).block();
             }
         });
 
-        commands.put("bj", (event, argv, argvStr) -> {
+        commandsMap.put("bj", (event, argv, argvStr) -> {
             MessageChannel messageChannel = event.getMessage().getChannel().block();
             User user = event.getMessage().getAuthor().get();
             if (argv.length == 0) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "The BlackJack Casino", "U havent told me how much money u wanna gamble", Color.DEEP_SEA);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DEEP_SEA);
+                    embed.setDescription("U havent told me how much money u wanna gamble");
+                    embed.setTitle("The BlackJack Casino");
+                }).block();
                 return;
             }
             long toGamble;
             try {
                 toGamble = Long.parseLong(argv[0]);
             } catch (NumberFormatException e) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "The BlackJack Casino", "Not a valid number!", Color.DEEP_SEA);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DEEP_SEA);
+                    embed.setDescription("Not a valid number!");
+                    embed.setTitle("The BlackJack Casino");
+                }).block();
                 return;
             }
             if (toGamble < 1) {
-                createMessageWithEmbed(messageChannel, "The BlackJack Casino", "What are you trying to do? lol", Color.DEEP_SEA);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DEEP_SEA);
+                    embed.setDescription("What are you trying to do? lol");
+                    embed.setTitle("The BlackJack Casino");
+                }).block();
                 return;
             }
             long balance;
@@ -486,19 +635,27 @@ public class Main {
                 return;
             }
             if (toGamble > balance) {
-                createMessageWithEmbed(event.getMessage().getChannel().block(), "The BlackJack Casino", "You cant gamble more than you own!", Color.DEEP_SEA);
+                event.getMessage().getChannel().block().createEmbed((embed) -> {
+                    embed.setColor(Color.DEEP_SEA);
+                    embed.setDescription("You cant gamble more than you own!");
+                    embed.setTitle("The BlackJack Casino");
+                }).block();
                 return;
             }
             BJGame bjGame = new BJGame(event, toGamble);
-            BJGamesList.add(bjGame);
-            createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Ur cards: " + bjGame.getUserCards() +
-                    "\nh=hit, s=stand, e=end", Color.DEEP_SEA);
+            runningBJGamesList.add(bjGame);
+            event.getMessage().getChannel().block().createEmbed((embed) -> {
+                embed.setColor(Color.DEEP_SEA);
+                embed.setDescription("Ur cards: " + bjGame.getUserCards() +
+                        "\nh=hit, s=stand, e=end");
+                embed.setTitle("The BlackJack Casino");
+            }).block();
         });
 		
 		TimerTask reduceTimeOutTask = new TimerTask() {
             @Override
             public void run() {
-                for (Map.Entry<User, AtomicLong> entry : userTimeOutMap.entrySet()) {
+                for (Map.Entry<User, AtomicLong> entry : userSpamCooldownTimerMap.entrySet()) {
                     if (entry.getValue().get() != 0) {
                         entry.getValue().decrementAndGet();
                     }
@@ -511,13 +668,17 @@ public class Main {
         TimerTask checkJobsTimeOut = new TimerTask() {
             @Override
             public void run() {
-                for (Job job : currentJobs) {
+                for (Job job : currentWorkingJobsList) {
                     if (job.isTimeOver()) {
                         //if times up
-                        createMessageWithEmbed(job.getWorkingChannel(), "Work Application", "Terrible job " +
-                                job.getWorkingUser().getUsername() + ". You are too slow.\n" +
-                                "I will not be paying you anything for that.", Color.DISCORD_WHITE);
-                        currentJobs.remove(job);
+                        job.getWorkingChannel().createEmbed((embed) -> {
+                            embed.setColor(Color.DISCORD_WHITE);
+                            embed.setDescription("Terrible job " +
+                                    job.getWorkingUser().getUsername() + ". You are too slow.\n" +
+                                    "I will not be paying you anything for that.");
+                            embed.setTitle("Work Application");
+                        }).block();
+                        currentWorkingJobsList.remove(job);
                     }
                 }
             }
@@ -527,7 +688,7 @@ public class Main {
         TimerTask reduceWorkTimeOut = new TimerTask() {
             @Override
             public void run() {
-                for (Map.Entry<User, AtomicLong> entry : userWorkTimeOutMap.entrySet()) {
+                for (Map.Entry<User, AtomicLong> entry : userWorkCooldownTimerMap.entrySet()) {
                     if (entry.getValue().get() != 0) {
                         entry.getValue().decrementAndGet();
                     }
@@ -544,100 +705,24 @@ public class Main {
                         if (userOptional.isPresent() && userOptional.get().isBot()) {
                             return;
                         }
-                        rankMessage(event);
 
-                        //for working
-                        for (Job job : currentJobs) {
-                            //for each job in currentJobs
-                            if (job.checkChannel(event) && job.checkUser(event)) {
-                                if (job.checkJob(event)) {
-                                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Work Application",
-                                            "Great job "
-                                                    + event.getMessage().getAuthor().get().getUsername()
-                                                    + "! You've earned yourself " + job.getWage(), Color.DISCORD_WHITE);
-                                    try {
-                                        psqlManager.deposit(event.getMessage().getAuthor().get().getId().asString(), job.getWage());
-                                    } catch (SQLException ignored) {
-                                    }
-                                } else {
-                                    createMessageWithEmbed(event.getMessage().getChannel().block(), "Work Application",
-                                            "Terrible job " +
-                                                    event.getMessage().getAuthor().get().getUsername() + ". This is not expected from you.\n" +
-                                                    "I will not be paying you anything for that.", Color.DISCORD_WHITE);
-                                }
-                                currentJobs.remove(job);
-                                return;
-                            }
+                        applyMessageToRankingSystem(event);
+
+                        if (applyMessageToJobsSystem(event)) {
+                            return;
                         }
-                        //end of for working
 
-                        //for blackjack
-                        for (BJGame bjGame : BJGamesList) {
-                            //for each game in BJGamesList
-                            User user = event.getMessage().getAuthor().get();
-                            MessageChannel messageChannel = event.getMessage().getChannel().block();
-                            if (bjGame.checkChannel(event) && bjGame.checkUser(event)) {
-                                String message = event.getMessage().getContent();
-                                int result = 0;
-                                if (message.equals("h")) {
-                                    bjGame.hit();
-                                    result = bjGame.getGameStatus();
-                                } else if (message.equals("s")) {
-                                    bjGame.stand();
-                                    result = bjGame.getGameStatus();
-                                } else if (message.equals("e")) {
-                                    createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Blackjack game ended. You wont win or lose anything.\n" +
-                                            "But heres your cards: " + bjGame.getUserCards() +
-                                            "\nAnd here is the dealers cards: " + bjGame.getDealerCards(), Color.DEEP_SEA);
-                                    BJGamesList.remove(bjGame);
-                                    return;
-                                } else {
-                                    createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Invalid command\nUr cards: " + bjGame.getUserCards() +
-                                            "\nh=hit, s=stand, e=end", Color.DEEP_SEA);
-                                    return;
-                                }
-
-                                if (result == BJGame.STATUS_LOSE) {
-                                    createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Ur cards: " + bjGame.getUserCards() +
-                                            "\nDealers cards: " + bjGame.getDealerCards() +
-                                            "\nYou lose! Say bye to " + bjGame.getToGamble(), Color.DEEP_SEA);
-                                    try {
-                                        psqlManager.withdraw(user.getId().asString(), bjGame.getToGamble());
-                                    } catch (SQLException e) {
-                                        e.printStackTrace();
-                                    }
-                                    BJGamesList.remove(bjGame);
-                                } else if (result == BJGame.STATUS_WIN) {
-                                    createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Ur cards: " + bjGame.getUserCards() +
-                                            "\nDealers cards: " + bjGame.getDealerCards() +
-                                            "\nYou won! You win " + bjGame.getToGamble(), Color.DEEP_SEA);
-                                    try {
-                                        psqlManager.deposit(user.getId().asString(), bjGame.getToGamble());
-                                    } catch (SQLException e) {
-                                        e.printStackTrace();
-                                    }
-                                    BJGamesList.remove(bjGame);
-                                } else if (result == BJGame.STATUS_TIE) {
-                                    createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Ur cards: " + bjGame.getUserCards() +
-                                            "\nDealers cards: " + bjGame.getDealerCards() +
-                                            "\nIts a tie! You dont lose or win any money", Color.DEEP_SEA);
-                                    BJGamesList.remove(bjGame);
-                                } else {
-                                    createMessageWithEmbed(messageChannel, "The BlackJack Casino", "Ur cards: " + bjGame.getUserCards() +
-                                            "\nh=hit, s=stand, e=end", Color.DEEP_SEA);
-                                }
-                                return;
-                            }
+                        if (applyMessageToBJSystem(event)) {
+                            return;
                         }
-                        //end of blackjack
 
-                        if (content.startsWith(prefix)) {
-                            String command = content.substring(prefix.length());
+                        if (content.startsWith(COMMAND_PREFIX)) {
+                            String command = content.substring(COMMAND_PREFIX.length());
                             command = command.split(" ")[0];
-                            for (Map.Entry<String, Command> entry : commands.entrySet()) {
+                            for (Map.Entry<String, Command> entry : commandsMap.entrySet()) {
                                 if (entry.getKey().equals(command)) {
                                     //this is for valid commands
-                                    String arguments = content.substring(prefix.length());
+                                    String arguments = content.substring(COMMAND_PREFIX.length());
                                     if (arguments.length() == command.length()) {
                                         //if there is only the command and no other arguments
                                         arguments = "";
@@ -648,7 +733,12 @@ public class Main {
                                     return;
                                 }
                             }
-                            createMessageWithEmbed(event.getMessage().getChannel().block(), "Invalid Command", "Invalid command: " + command, Color.CINNABAR);
+                            String finalCommand = command;
+                            event.getMessage().getChannel().block().createEmbed((embed) -> {
+                                embed.setColor(Color.CINNABAR);
+                                embed.setDescription("Invalid command: " + finalCommand);
+                                embed.setTitle("Invalid Command");
+                            }).block();
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -688,7 +778,124 @@ public class Main {
         client.onDisconnect().block();
     }
 
-    public static void rankMessage(MessageCreateEvent event) {
+    public static boolean applyMessageToJobsSystem(MessageCreateEvent event) {
+        for (Job job : currentWorkingJobsList) {
+            //for each job in currentJobs
+            if (job.checkChannel(event) && job.checkUser(event)) {
+                if (job.checkJob(event)) {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DISCORD_WHITE);
+                        embed.setDescription("Great job "
+                                + event.getMessage().getAuthor().get().getUsername()
+                                + "! You've earned yourself " + job.getWage());
+                        embed.setTitle("Work Application");
+                    }).block();
+                    try {
+                        psqlManager.deposit(event.getMessage().getAuthor().get().getId().asString(), job.getWage());
+                    } catch (SQLException ignored) {
+                    }
+                } else {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DISCORD_WHITE);
+                        embed.setDescription("Terrible job " +
+                                event.getMessage().getAuthor().get().getUsername() + ". This is not expected from you.\n" +
+                                "I will not be paying you anything for that.");
+                        embed.setTitle("Work Application");
+                    }).block();
+                }
+                currentWorkingJobsList.remove(job);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean applyMessageToBJSystem(MessageCreateEvent event) {
+        for (BJGame bjGame : runningBJGamesList) {
+            //for each game in BJGamesList
+            User user = event.getMessage().getAuthor().get();
+            MessageChannel messageChannel = event.getMessage().getChannel().block();
+            if (bjGame.checkChannel(event) && bjGame.checkUser(event)) {
+                String message = event.getMessage().getContent();
+                int result = 0;
+                if (message.equals("h")) {
+                    bjGame.hit();
+                    result = bjGame.getGameStatus();
+                } else if (message.equals("s")) {
+                    bjGame.stand();
+                    result = bjGame.getGameStatus();
+                } else if (message.equals("e")) {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_SEA);
+                        embed.setDescription("Blackjack game ended. You wont win or lose anything.\n" +
+                                "But heres your cards: " + bjGame.getUserCards() +
+                                "\nAnd here is the dealers cards: " + bjGame.getDealerCards());
+                        embed.setTitle("The BlackJack Casino");
+                    }).block();
+                    runningBJGamesList.remove(bjGame);
+                    return true;
+                } else {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_SEA);
+                        embed.setDescription("Invalid command\nUr cards: " + bjGame.getUserCards() +
+                                "\nh=hit, s=stand, e=end");
+                        embed.setTitle("The BlackJack Casino");
+                    }).block();
+                    return true;
+                }
+
+                if (result == BJGame.STATUS_LOSE) {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_SEA);
+                        embed.setDescription("Ur cards: " + bjGame.getUserCards() +
+                                "\nDealers cards: " + bjGame.getDealerCards() +
+                                "\nYou lose! Say bye to " + bjGame.getToGamble());
+                        embed.setTitle("The BlackJack Casino");
+                    }).block();
+                    try {
+                        psqlManager.withdraw(user.getId().asString(), bjGame.getToGamble());
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                    runningBJGamesList.remove(bjGame);
+                } else if (result == BJGame.STATUS_WIN) {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_SEA);
+                        embed.setDescription("Ur cards: " + bjGame.getUserCards() +
+                                "\nDealers cards: " + bjGame.getDealerCards() +
+                                "\nYou won! You win " + bjGame.getToGamble());
+                        embed.setTitle("The BlackJack Casino");
+                    }).block();
+                    try {
+                        psqlManager.deposit(user.getId().asString(), bjGame.getToGamble());
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                    runningBJGamesList.remove(bjGame);
+                } else if (result == BJGame.STATUS_TIE) {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_SEA);
+                        embed.setDescription("Ur cards: " + bjGame.getUserCards() +
+                                "\nDealers cards: " + bjGame.getDealerCards() +
+                                "\nIts a tie! You dont lose or win any money");
+                        embed.setTitle("The BlackJack Casino");
+                    }).block();
+                    runningBJGamesList.remove(bjGame);
+                } else {
+                    event.getMessage().getChannel().block().createEmbed((embed) -> {
+                        embed.setColor(Color.DEEP_SEA);
+                        embed.setDescription("Ur cards: " + bjGame.getUserCards() +
+                                "\nh=hit, s=stand, e=end");
+                        embed.setTitle("The BlackJack Casino");
+                    }).block();
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void applyMessageToRankingSystem(MessageCreateEvent event) {
         long timeOfMessage = System.currentTimeMillis();
         if (!event.getMessage().getAuthor().isPresent()) {return;}
         User messageAuthor = event.getMessage().getAuthor().get();
@@ -766,13 +973,5 @@ public class Main {
 
     public static long calculateXpForLvl(long lvl) {
         return 25 * lvl * (lvl + 1);
-    }
-
-    public static void createMessageWithEmbed(MessageChannel channel, String title, String txt, Color color) {
-        channel.createEmbed((embed) -> {
-            embed.setColor(color);
-            embed.setDescription(txt);
-            embed.setTitle(title);
-        }).block();
     }
 }

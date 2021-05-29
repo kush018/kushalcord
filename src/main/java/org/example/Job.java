@@ -35,8 +35,11 @@ public class Job {
         this.jobType = jobType;
         this.timeOfCreation = System.currentTimeMillis();
         setAnswerAndQuery();
-        Main.createMessageWithEmbed(event.getMessage().getChannel().block(), "Work Application",
-                "Your job description\n" + userQuery, Color.DISCORD_WHITE);
+        event.getMessage().getChannel().block().createEmbed((embed) -> {
+            embed.setColor(Color.DISCORD_WHITE);
+            embed.setDescription("Your job description\n" + userQuery);
+            embed.setTitle("Work Application");
+        }).block();
     }
 
     private void setAnswerAndQuery() throws InvalidJobException {
