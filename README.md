@@ -38,15 +38,17 @@ If this setup is not done properly, the bot will not work.
 
 ```
 # for windows computers
-mvnw package
+.\mvnw clean compile assembly:single
 # for linux computers
 chmod +x mvnw
-./mvnw package
+./mvnw clean compile assembly:single
 
 # this creates a jar file (with all the dependencies) in the target/ directory
 
 # to run the jar file
-java -jar target/kushalcord-1.0-SNAPSHOT.jar
+java -jar target/kushalcord-1.0-SNAPSHOT-jar-with-dependencies.jar
+
+# NOTE: Do not change directory to target/ and directly run the jar because the conf/ folder with all the configurations is not there in the target/ directory by default. Basically all you need to make sure is that the conf folder is in the current directory while running the .jar file.
 ```
 
 ## kushalcord user manual
