@@ -25,39 +25,93 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
+    /**
+     * Path to the file containing the API key for the discord bot, relative to the project root folder.
+     */
     public static final String APIKEY_FILE = "conf/api_key";
 
+    /**
+     * Prefix for the bot commands
+     */
     public static final String COMMAND_PREFIX = "kc ";
 
+    /**
+     * Status of the bot right after login.
+     */
     public static final String INITIAL_BOT_STATUS = COMMAND_PREFIX + "help";
 
+    /**
+     * One second in milliseconds (used for representing time)
+     */
     private static final long ONE_SECOND = 1000;
+    /**
+     * One minute in milliseconds (used for representing time)
+     */
     private static final long ONE_MINUTE = 60 * ONE_SECOND;
+    /**
+     * One hour in milliseconds (used for representing time)
+     */
     private static final long ONE_HOUR = 60 * ONE_MINUTE;
+    /**
+     * One day in milliseconds (used for representing time)
+     */
     private static final long ONE_DAY = 24 * ONE_HOUR;
 
+    /**
+     * When a user uses the "spam" command a cooldown is required before he or she can use the command again. The spam cooldown is decided by picking a random number between a lower and upper limit. This is the lower limit. (in seconds)
+     */
     public static final long SPAM_TIME_OUT_MIN = 15;
+    /**
+     * When a user uses the "spam" command a cooldown is required before he or she can use the command again. The spam cooldown is decided by picking a random number between a lower and upper limit. This is the upper limit. (in seconds)
+     */
     public static final long SPAM_TIME_OUT_MAX = 120;
 
+    /**
+     * When a user uses the "work" command, a cooldown is required before he or she can use the command again. This field defines that cooldown (in seconds).
+     */
     private static final long USER_WORK_TIME_OUT = ONE_HOUR / 1000;
 
+    /**
+     * This is the money the user receives when he or she uses the command daily. (This is the daily bonus - in kc coins)
+     */
     private static final long DAILY_ALLOWANCE = 10000;
 
+    /**
+     * When a user uses the "toprankers" command, he or she can specify the number of ranks to be displayed (from the message ranking system). This defines the maximum limit of ranks that can be displayed.
+     */
     private static final int MAX_RANKS_TO_BE_DISPLAYED = 15;
 
+    /**
+     * This is the PSQLManager object.
+     */
     private static PSQLManager psqlManager;
 
+    /**
+     * This is a HashMap that maps the command names to the "Command" object that the command must trigger.
+     */
     private static Map<String, Command> commandsMap;
 
+    /**
+     * It is a HashMap which Maps a discord user with his or her spam cooldown (time left before cooldown is over). AtomicLong is used to store cooldown to ensure thread-safety. The cooldown value reduces by one every second. When the cooldown is zero the user can spam again.
+     */
     private static HashMap<User, AtomicLong> userSpamCooldownTimerMap;
+    /**
+     * It is a HashMap which Maps a discord user with his or her work cooldown (time left before cooldown is over). AtomicLong is used to store cooldown to ensure thread-safety. The cooldown value reduces by one every second. When the cooldown is zero the user can work again.
+     */
     private static HashMap<User, AtomicLong> userWorkCooldownTimerMap;
 
+    /**
+     * This is a list of the currently "running" jobs i.e., the Job objects that represents ongoing jobs - jobs which users are working on. CopyOnWriteArrayList is used instead of plain ArrayList for thread-safety.
+     */
     private static CopyOnWriteArrayList<Job> currentWorkingJobsList;
-
+    /**
+     * This is a list of the currently "running" blackjack games i.e, the BJGame objects that represents ongoing blackjack games - games which the users are playing.
+     */
     private static ArrayList<BJGame> runningBJGamesList;
 
     public static void main(String[] args) {
 
+        /* This part initilises objects */
         userWorkCooldownTimerMap = new HashMap<>();
         userSpamCooldownTimerMap = new HashMap<>();
         currentWorkingJobsList = new CopyOnWriteArrayList<>();
@@ -65,45 +119,72 @@ public class Main {
 
         commandsMap = new HashMap<>();
 
+        /* Initialises the PSQLManager object */ 
         try {
             psqlManager = new PSQLManager();
         } catch (ClassNotFoundException | SQLException e) {
+            //on creation of the PSQLManager object, the constructor may throw some exceptions which are caught here
+            //on catching these exceptions, the program simply prints the stacktrace to stdout and end the program as the bot cannot function properly without a database
             e.printStackTrace();
+            return;
         }
 
         if (!psqlManager.isPsqlManagerCreatedSuccessfully()) {
+            //this happens when the "address", username or password have not been configured correctly, or do not exist
+            //in which case the connection to the database cannot be set up and the program terminates
             System.out.println("Unable to set up connection to the database.");
             return;
         }
 
+        //FileReader object create to read from the file containing the API key for the discord bot
         FileReader fileReader;
         try {
+            //initialises the FileReader object with APIKEY_FILE, which is the path to the API key, relative to the project's
+            //root directory. This creates a FileReader which can read from file at path APIKEY_FILE
             fileReader = new FileReader(APIKEY_FILE);
         } catch (FileNotFoundException e) {
+            //if a FileNotFoundException is thrown, it means that the APIKEY_FILE does not exist
             System.out.println("File: " + APIKEY_FILE + " not found. Please make the file and type the discord bot's API key in it.");
+            //without the API key, a connection with discord is not possible, hence the program is terminated
             return;
         }
+        //creates a BufferedReader which is responsible for buffering input from the FileReader
+        //the BufferedReader buffers the input from the FileReader and returns it to the program.
         BufferedReader reader = new BufferedReader(fileReader);
+        //the String apiKey stores our API key which is present at the first line of the API key file
         String apiKey;
         try {
+            //reads the first line of the file APIKEY_FILE from the FileReader and returns it as a String
             apiKey = reader.readLine();
         } catch (IOException e) {
+            //while reading a file an IO related exception might occur. If this happens then it is caught and an error message is printed
             System.out.println("An IO exception occurred while reading file: " + APIKEY_FILE);
+            //since we dont have the apikey, there is no point in going any further
             return;
         }
 
+        //creates a connection with discord using the obtained API key and creates a GatewayDiscordClient
         GatewayDiscordClient client = DiscordClientBuilder.create(apiKey)
                 .build().login().block();
 
+        //this part of the code decides what the program should do when we have successfully logged into discord using the apikey
+        //the ReadyEvent is triggered whenever we have successfully logged in
+        //subscribe() tells our program that it needs to execute the code that follows whenever the event is triggered
         client.getEventDispatcher().on(ReadyEvent.class)
                 .subscribe(event -> {
+                    //the ReadyEvent object that triggered the ReadyEvent is stored in an object "event"
+                    //Obtains and stores the bot account's User in an object called "self"
                     User self = event.getSelf();
+                    //prints a confirmation telling the username and discriminator of the bot account
                     System.out.printf(
                             "Logged in as %s#%s%n", self.getUsername(), self.getDiscriminator()
                     );
+                    //updates the bot's status on discord, saying that it is online and "watching" the value in INITIAL_BOT_STATUS
                     client.updatePresence(Presence.online(Activity.watching(INITIAL_BOT_STATUS))).block();
                 });
 
+        /* This String is the String that gets printed when the help command is used.
+        It gives a list of all the valid commands as well as the prefix that this bot uses. */
         String helpMenu = "Use prefix: " + COMMAND_PREFIX + "\n" +
                 "Commands:\n" +
                 "1) help\n" +
@@ -121,6 +202,8 @@ public class Main {
                 "13) bj\n" +
                 "NOTE: Type \"kc help <any command> for more info on that command";
 
+        /* This HashMap maps a command to its help menu message.
+        The help menu message is displayed when help <command> is typed */
         HashMap<String, String> helpCommandsMap = new HashMap<>();
         helpCommandsMap.put("help", "help - prints general help menu\n" +
                 "help <command> - prints help menu for command");
@@ -146,16 +229,36 @@ public class Main {
                 " said it out of its own free will");
         helpCommandsMap.put("bj", "bj <amount> - gamble your money away in a game of blackjack");
 
+        /* The help command */
         commandsMap.put("help", (event, argv, argvStr) -> {
             if (argv.length == 0) {
+                /*
+                if no arguments were given, then the contents of the String "helpMenu" is simply shown to the user which shows a list
+                of valid commands
+                event.getMessage returns the Message involved in the MessageCreateEvent
+                getChannel() returns the MessageChannel in which the message was sent
+                createEmbed() creates a message in the corresponding MessageChannel as an embed
+                the EmbedCreateSpec which specifies the details embed, is stored in an object "embed"
+                setColor() sets the color of the embed
+                setDescription() sets the text of the embed
+                setTitle() sets the title of the embed
+                */
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.DISCORD_BLACK);
                     embed.setDescription(helpMenu);
                     embed.setTitle("Help Menu");
                 }).block();
             } else {
+                /* 
+                If arguments were given i.e., the help command was used like
+                help <command>, in which case, the bot must tell the user details about <command>
+                Now, we get the description of the corresponding command from HashMap helpCommandsMap using .get(argv[0])
+                argv[0] means "first argument"
+                */
                 String helpMessage = helpCommandsMap.get(argv[0]);
                 if (helpMessage == null) {
+                    /* If the command does not exist as an entry in the helpCommandsMap, the HashMap will return null when .get() is called
+                    and a corresponding message is sent to the user, tell him or her that the command entered is invalid */
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.DISCORD_BLACK);
                         embed.setDescription("Not a valid command");
@@ -171,19 +274,29 @@ public class Main {
             }
         });
 
+        /* This is a simple ping command
+        When the user types the command ping,
+        the bot replies with a simple message "Pong!" (there are no embeds here)*/
         commandsMap.put("ping", (event, argv, argvStr) -> event.getMessage()
                 .getChannel().block()
                 .createMessage("Pong!").block());
 
+        /* This is a the ask command, also known as 8ball in other bots.
+        Syntax: ask <question>. The question is meant to be a yes/no question.
+        When this command is called, the bot gives a message to the user, giving a random answer*/
         commandsMap.put("ask", (event, argv, argvStr) -> {
              if (argvStr.length() == 0) {
+                 /* If there are no arguments, it means the user didn't ask any question*/
                  event.getMessage().getChannel().block().createEmbed((embed) -> {
                      embed.setColor(Color.CYAN);
                      embed.setDescription("You didn't ask a question, genius");
                      embed.setTitle("Ask kushalCord");
                  }).block();
+                 //if the user didnt ask a question, no point in going further so the function can end here.
                  return;
              }
+             //the code reaches here only if the user asked a question
+             //"answers" is a one dimensional array of Strings which contains all the answers to the question that the bot can give
              String[] answers = {"Yes",
                     "No",
                     "Probably",
@@ -197,7 +310,9 @@ public class Main {
                     "Well no, but actually yes",
                     "It depends",
                     "hmmmmm idk"};
+             //"answer" is a String that is picked randomly from the answers array
              String answer = answers[(int)(Math.random() * answers.length)];
+             //the selected answer is then shown to the user
              event.getMessage().getChannel().block().createEmbed((embed) -> {
                 embed.setColor(Color.CYAN);
                 embed.setDescription(answer);
@@ -205,23 +320,41 @@ public class Main {
              }).block();
         });
 
+        /* The say command:
+        Syntax: say <something>
+        The bot messages <something> as a plain message and then deletes the original message in which the "say" command was issued
+        This is a fun command as it makes it look like the bot said something out of its own free will */
         commandsMap.put("say", (event, argv, argvStr) -> {
             Message msg = event.getMessage();
             if (argv.length == 0) {
+                //if no arguments are there, it means the user didnt specify what the bot must say
                 msg.getChannel().block().createMessage("I can't just say nothing. What are you trying to do?").block();
             } else {
+                //argvStr is a String which contains all the arguments in the form of a String
+                //eg: if the user typed "say whatever 1 whatever 2" then argvStr = "whatever 1 whatever 2"
                 msg.getChannel().block().createMessage(argvStr).block();
                 msg.delete().block();
             }
         });
 
+        /* The spam
+        Usage: spam <n> <something>
+        Sends the message <something> n times in the same channel in which the spam command was issued*/
         commandsMap.put("spam", (event, argv, argvStr) -> {
             MessageChannel channel = event.getMessage().getChannel().block();
+            //the User who used the spam command is stored in the form of a User object in "spammer"
+            //this is helpful in identifying the spammer, helping in knowing if the spam cooldown was completed.
             User spammer = event.getMessage().getAuthor().get();
             try {
+                //gets the amount of seconds left as an AtomicLong for the cooldown to get over
                 if (userSpamCooldownTimerMap.get(spammer) == null || userSpamCooldownTimerMap.get(spammer).get() == 0) {
+                    //if its zero, that means the cooldown is over
+                    //if its null, that means that the user has not even spammed yet
+                    //either way, we let the user spam
+                    //times stores the number of times the user wants the bot to spam (it is the first argument)
                     int times = Integer.parseInt(argv[0]);
                     if (times > 20) {
+                        //if the user wants the bot to spam too many times, above the max spam limit, we shouldn't allow him or her to do so and the comamnd is simply ignored
                         event.getMessage().getChannel().block().createEmbed((embed) -> {
                             embed.setColor(Color.PINK);
                             embed.setDescription("Woah! Hold on there! You don't wanna spam **too** much now do you?");
@@ -229,8 +362,18 @@ public class Main {
                         }).block();
                         return;
                     }
+                    //we will reach here only if the number of times the user wants to spam is lesser than 20 because if its more, the program simply returns and ends the function
+                    //the String toSpam stores the message that needs to be spammed
+                    //argvStr stores all the arguments as one String, out of which we need to separate the first argument, telling us the number of times the message needs to be spammed
+                    //substring() creates a string out of which is first argument is removed
+                    //so if the command was spam 10 message goes here
+                    //argv[0].length = 2 [as argv[0] = "10"]
+                    //argvStr = "10 message goes here" ["10" needs to be removed]
+                    //argvStr.substring(argv[0].length [which evaluates to 2]) = "message goes here"
                     String toSpam = argvStr.substring(argv[0].length());
                     if (argv.length == 1) {
+                        //if argv.length == 1, it means that only one argument has been given i.e., the user has not specified what he or she wants to spam
+                        //thus, the function simply ends and wont go further
                         event.getMessage().getChannel().block().createEmbed((embed) -> {
                             embed.setColor(Color.PINK);
                             embed.setDescription("You didn't tell me what to spam");
@@ -238,11 +381,16 @@ public class Main {
                         }).block();
                         return;
                     }
+                    //this is the for loop which actually spams the required message
                     for (int i = 0; i < times; i++) {
                         channel.createMessage(toSpam).block();
                     }
+                    //the userSpamCooldownTimerMap maps a User with the time left before cooldown is complete in seconds
+                    //so here, we are adding a Key-Value pair - where the Key is the "spammer" - the spamming user
+                    //and the Value is a new AtomicLong object which stores a random value between SPAM_TIME_OUT_MAX and SPAM_TIME_OUT_MIN
                     userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
                 } else {
+                    //if the spam cooldown has not reached zero yet
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.PINK);
                         embed.setDescription("Stop spamming so much. You'll annoy everyone!");
@@ -250,8 +398,13 @@ public class Main {
                     }).block();
                 }
             } catch (NumberFormatException e) {
+                //if the command was issued without a valid number i.e., if the command was used like: spam abc def
+                //abc is not a valid number and will throw an NumberFormatException when it is attempted to convert to a number
+                //if no valid number was entered, it will spam the message n times where n = times
                 int times = 5;
                 if (userSpamCooldownTimerMap.get(spammer) == null || userSpamCooldownTimerMap.get(spammer).get() == 0) {
+                    //to check if the users cooldown was completed
+                    //here we dont need to create a substring of argvStr because no valid argument was given telling us the number of times to spam
                     String toSpam = argvStr;
                     if (argv.length == 0) {
                         event.getMessage().getChannel().block().createEmbed((embed) -> {
@@ -261,11 +414,14 @@ public class Main {
                         }).block();
                         return;
                     }
+                    //spams the message times times
                     for (int i = 0; i < times; i++) {
                         channel.createMessage(toSpam).block();
                     }
+                    //adds cooldown timer for user
                     userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
                 } else {
+                    //if cooldown was not completed
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.PINK);
                         embed.setDescription("Stop spamming so much. You'll annoy everyone!");
@@ -273,6 +429,9 @@ public class Main {
                     }).block();
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
+                //if no arguments were given at all, then
+                //when the program tried to acces argv[0] it will throw ArrayIndexOutOfBoundsException
+                //in which case, we must inform the user
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.PINK);
                     embed.setDescription("Invalid arguments");
@@ -281,7 +440,11 @@ public class Main {
             }
         });
 
+        /* The delete command
+        Usage: delete <n>
+        Deletes the last n messages sent in the channel */
         commandsMap.put("delete", (event, argv, argvStr) -> {
+            //channel contains the channel in which the message is sent
             TextChannel channel = (TextChannel) event.getMessage().getChannel().block();
             try {
                 int n = Integer.parseInt(argv[0]);
@@ -293,12 +456,22 @@ public class Main {
                     }).block();
                     return;
                 }
+                //bulkdelete() can delete multiple messages at once, useful in our case as it would be inefficient to delete
+                //n messages one by one
+                //getMessagesBefore() gives us all the messages sent before a particular message
+                //getLastMessageId() gets the last message in the channel
+                //take(n) makes sure that out of all the messages sent before the message, we only take the last n messages
+                //then, bulkdelete() will delete all the required messages
                 channel.bulkDelete(channel.getMessagesBefore(channel.getLastMessageId().get())
                         .take(n)
                         .map(message -> message.getId())
                 ).blockLast();
+                //this deletes the command message.
+                //for eg: if I delete delete 10, it will delete the message in which the command delete 10 is there and also delete 10 messages before it
                 event.getMessage().delete().block();
+                //this part shows a confirmation to the user that the required messages were deleted
                 if (n == 1) {
+                    //for good grammar
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.BROWN);
                         embed.setDescription("1 message deleted");
@@ -320,10 +493,14 @@ public class Main {
             }
         });
 
+        /* The bal command
+        Usage: bal
+        OR bal <mention1> <mention2> <mention3> ... <mention n> */
         commandsMap.put("bal", (event, argv, argvStr) -> {
+            //gets a Set of users that were mentioned
             Set<Snowflake> userMentionSet = event.getMessage().getUserMentionIds();
             if (userMentionSet.size() == 0) {
-                //if no one was mentioned
+                //if no one was mentioned, then we must just print the balance of the user who issued the command
                 User user = event.getMessage().getAuthor().get();
                 try {
                     long bal = psqlManager.getBalance(user.getId().asString());
