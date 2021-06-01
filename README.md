@@ -38,10 +38,10 @@ If this setup is not done properly, the bot will not work.
 
 ```
 # for windows computers
-.\mvnw clean compile assembly:single
+.\mvnw package
 # for linux computers
 chmod +x mvnw
-./mvnw clean compile assembly:single
+./mvnw package
 
 # this creates a jar file (with all the dependencies) in the target/ directory
 
