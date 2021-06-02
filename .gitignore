@@ -28,5 +28,12 @@ hs_err_pid*
 .idea/
 *.iml
 
+#VSCode IDE specific files
+.settings/
+bin/
+.classpath
+.factorypath
+.project
+
 #the below folder contains SENSITIVE INFORMATION and must therefore be ignored
 conf/

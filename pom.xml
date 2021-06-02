@@ -87,7 +87,11 @@
                     <mainClass>org.example.Main</mainClass>
                 </configuration>
             </plugin>
-            <plugin>
+            
+      </plugins>
+    </pluginManagement>
+	<plugins>
+	<plugin>
     <artifactId>maven-assembly-plugin</artifactId>
     <configuration>
       <archive>
@@ -109,7 +113,6 @@
     </execution>
     </executions>
   </plugin>
-      </plugins>
-    </pluginManagement>
+	</plugins>
   </build>
 </project>
