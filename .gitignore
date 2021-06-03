@@ -30,6 +30,7 @@ hs_err_pid*
 
 #VSCode IDE specific files
 .settings/
+.vscode/
 bin/
 .classpath
 .factorypath
