@@ -8,6 +8,8 @@ public class CommandFactory {
     private HashMap<String, Command> commandsMap;
 
     public CommandFactory() {
+        commandsMap = new HashMap<>();
+
         commandsMap.put("ask", new AskCommand());
         commandsMap.put("bal", new BalanceCommand());
         commandsMap.put("bj", new BlackJackCommand());
