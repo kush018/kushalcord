@@ -11,8 +11,8 @@ public interface Command {
     /**
      * The function is executed when the command is to be run
      * @param event - The MessageCreateEvent which called this command
-     * @param args - The arguments to this command eg: "arg1", "arg2"
-     * @param argumentsString - All the arguments to this command as a String eg: "arg1 arg2"
+     * @param argv - The arguments to this command eg: "arg1", "arg2"
+     * @param argvStr - All the arguments to this command as a String eg: "arg1 arg2"
      */
-    void execute(MessageCreateEvent event, String[] args, String argumentsString);
+    void execute(MessageCreateEvent event, String[] argv, String argvStr);
 }
