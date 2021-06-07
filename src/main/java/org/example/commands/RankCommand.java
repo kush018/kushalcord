@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.Set;
 
 import static org.example.Main.*;
+import static org.example.Utils.*;
 
 public class RankCommand implements Command {
 
@@ -70,5 +71,11 @@ public class RankCommand implements Command {
                 }
             }
         }
+    }
+
+    @Override
+    public String getHelpString() {
+        return "rank - tells ur xp, level and rank\n" +
+                "rank <mention1> <mention2> ... - tells the rank of all users mentioned";
     }
 }

@@ -59,5 +59,11 @@ public class BalanceCommand implements Command {
             }
         }
     }
-    
+
+    @Override
+    public String getHelpString() {
+        return "bal - tells your bank balance\n" +
+                "bal <mention1> <mention2> ... - tells the bank balance of all the users mentioned";
+    }
+
 }

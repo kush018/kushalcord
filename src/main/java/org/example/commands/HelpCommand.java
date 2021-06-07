@@ -3,11 +3,26 @@ package org.example.commands;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.rest.util.Color;
 import org.example.Command;
+import org.example.Main;
 
-import static org.example.Main.helpCommandsMap;
-import static org.example.Main.helpMenu;
+import java.util.HashMap;
 
 public class HelpCommand implements Command {
+
+    String helpMenu;
+
+    public HelpCommand() {
+        StringBuilder helpMenuBuilder = new StringBuilder();
+        int i = 1;
+        helpMenuBuilder.append("Use prefix: ").append(Main.COMMAND_PREFIX).append("\n")
+                .append("Below is a list of valid commands: ").append("\n");
+        for (HashMap.Entry<String, Command> entry : Main.commandsMap.entrySet()) {
+            helpMenuBuilder.append(i).append(") ").append(entry.getKey()).append("\n");
+            i++;
+        }
+        helpMenuBuilder.append("Write: ```").append(Main.COMMAND_PREFIX).append("help <commandname>``` to learn more about commandname where commandname is a valid command in the list");
+        helpMenu = helpMenuBuilder.toString();
+    }
 
     @Override
     public void execute(MessageCreateEvent event, String[] argv, String argvStr) {
@@ -35,8 +50,8 @@ public class HelpCommand implements Command {
                 Now, we get the description of the corresponding command from HashMap helpCommandsMap using .get(argv[0])
                 argv[0] means "first argument"
                 */
-            String helpMessage = helpCommandsMap.get(argv[0]);
-            if (helpMessage == null) {
+            Command commandToHelp = Main.commandsMap.get(argv[0]);
+            if (commandToHelp == null) {
                     /* If the command does not exist as an entry in the helpCommandsMap, the HashMap will return null when .get() is called
                     and a corresponding message is sent to the user, tell him or her that the command entered is invalid */
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
@@ -45,6 +60,7 @@ public class HelpCommand implements Command {
                     embed.setTitle("Help Menu");
                 }).block();
             } else {
+                String helpMessage = commandToHelp.getHelpString();
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.DISCORD_BLACK);
                     embed.setDescription(helpMessage);
@@ -52,5 +68,11 @@ public class HelpCommand implements Command {
                 }).block();
             }
         }
+    }
+
+    @Override
+    public String getHelpString() {
+        return "help - prints general help menu\n" +
+                "help <command> - prints help menu for command";
     }
 }

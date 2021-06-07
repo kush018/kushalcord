@@ -43,4 +43,10 @@ public class AskCommand implements Command {
            embed.setTitle("Ask kushalCord");
         }).block();
     }
+
+    @Override
+    public String getHelpString() {
+        return "ask <question> - ask a yes/no type question to the bot to hear the answer\n" +
+                "(its not real its just for fun. the bot only gives random answers)";
+    }
 }

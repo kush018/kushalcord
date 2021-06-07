@@ -19,4 +19,10 @@ public class SayCommand implements Command {
             msg.delete().block();
         }
     }
+
+    @Override
+    public String getHelpString() {
+        return "say <something> - make the bot say something and delete the command so that it looks like the bot" +
+                " said it out of its own free will";
+    }
 }

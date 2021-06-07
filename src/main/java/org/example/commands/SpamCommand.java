@@ -112,4 +112,11 @@ public class SpamCommand implements Command {
             }).block();
         }
     }
+
+    @Override
+    public String getHelpString() {
+        return "spam <message> - spams a message 5 times\n" +
+                "spam <n> <message> - spams a message n times\n" +
+                "(use at your own risk lol)";
+    }
 }

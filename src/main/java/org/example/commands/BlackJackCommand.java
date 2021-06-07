@@ -78,4 +78,9 @@ public class BlackJackCommand implements Command {
             embed.setTitle("The BlackJack Casino");
         }).block();
     }
+
+    @Override
+    public String getHelpString() {
+        return "bj <amount> - gamble your money away in a game of blackjack";
+    }
 }

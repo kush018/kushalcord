@@ -99,4 +99,9 @@ public class TransferCommand implements Command {
             embed.setTitle("Bank Transfer Request");
         }).block();
     }
+
+    @Override
+    public String getHelpString() {
+        return "transfer <amt> <mention> - transfers amt coins to user mentioned";
+    }
 }

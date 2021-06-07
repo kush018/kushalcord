@@ -10,4 +10,10 @@ public class PingCommand implements Command {
         event.getMessage().getChannel().block()
                 .createMessage("Pong!").block();
     }
+
+    @Override
+    public String getHelpString() {
+        return "ping - causes bot to reply with Pong!\n" +
+                "(used to test if bot is running properly or not)";
+    }
 }

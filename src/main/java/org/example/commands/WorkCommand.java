@@ -55,4 +55,10 @@ public class WorkCommand implements Command {
             }).block();
         }
     }
+
+    @Override
+    public String getHelpString() {
+        return "work <job> - work for a job\n" +
+                "currently available jobs: hacker, paanwala";
+    }
 }

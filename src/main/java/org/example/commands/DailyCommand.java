@@ -53,4 +53,9 @@ public class DailyCommand implements Command {
             throwables.printStackTrace();
         }
     }
+
+    @Override
+    public String getHelpString() {
+        return "daily - collect your daily allowance";
+    }
 }

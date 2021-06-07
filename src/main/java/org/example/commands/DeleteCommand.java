@@ -57,4 +57,9 @@ public class DeleteCommand implements Command {
             }).block();
         }
     }
+
+    @Override
+    public String getHelpString() {
+        return "delete <n> - deletes the last n messages, and the delete message request";
+    }
 }

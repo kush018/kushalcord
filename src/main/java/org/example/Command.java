@@ -15,4 +15,6 @@ public interface Command {
      * @param argvStr - All the arguments to this command as a String eg: "arg1 arg2"
      */
     void execute(MessageCreateEvent event, String[] argv, String argvStr);
+
+    String getHelpString();
 }

@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import static org.example.Main.*;
+import static org.example.Utils.*;
 
 public class TopRankersCommand implements Command {
 
@@ -71,5 +72,11 @@ public class TopRankersCommand implements Command {
             embed.setDescription("Top " + finalN + " ranks:\n" + builder.toString());
             embed.setTitle("Xp Top Rankers");
         }).block();
+    }
+
+    @Override
+    public String getHelpString() {
+        return "toprankers <n> - prints the leaderboard of the top n ranks in the guild xp system\n" +
+                "toprankers - same as the above commands where n = 10";
     }
 }
