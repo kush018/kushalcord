@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.example.Utils.*;
 
 public class Main {
+    // TODO a lot of fields here can be put in the respective command classes - this is because they are only relavant there no need to put here
+
     /**
      * Path to the file containing the API key for the discord bot, relative to the project root folder.
      */
@@ -59,11 +61,11 @@ public class Main {
     /**
      * When a user uses the "spam" command a cooldown is required before he or she can use the command again. The spam cooldown is decided by picking a random number between a lower and upper limit. This is the lower limit. (in seconds)
      */
-    public static final long SPAM_TIME_OUT_MIN = 15;
+    public static final long SPAM_TIME_OUT_MIN = 150;
     /**
      * When a user uses the "spam" command a cooldown is required before he or she can use the command again. The spam cooldown is decided by picking a random number between a lower and upper limit. This is the upper limit. (in seconds)
      */
-    public static final long SPAM_TIME_OUT_MAX = 120;
+    public static final long SPAM_TIME_OUT_MAX = 300;
 
     /**
      * When a user uses the "work" command, a cooldown is required before he or she can use the command again. This field defines that cooldown (in seconds).

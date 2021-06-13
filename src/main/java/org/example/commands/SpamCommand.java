@@ -26,7 +26,8 @@ public class SpamCommand implements Command {
                 //either way, we let the user spam
                 //times stores the number of times the user wants the bot to spam (it is the first argument)
                 int times = Integer.parseInt(argv[0]);
-                if (times > 20) {
+                // TODO Make it such that the maximum spam limit and spam cooldown is all in this class
+                if (times > 10) {
                     //if the user wants the bot to spam too many times, above the max spam limit, we shouldn't allow him or her to do so and the comamnd is simply ignored
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.PINK);
