@@ -38,3 +38,9 @@ bin/
 
 #the below folder contains SENSITIVE INFORMATION and must therefore be ignored
 conf/
+
+#database files
+*.db
+
+#javadocs
+javadoc/

@@ -22,17 +22,17 @@ public class DailyCommand implements Command {
             //every time a person collects the daily bonus, the time of collecting is recorded, so that we can find out if the person has already collected his or her
             //daily bonus in the last 24 hours
             //dailyTaken stores the last time when the daily was taken in the form of milliseconds after the unix epoch
-            long dailyTaken = Main.psqlManager.getDailyTaken(user.getId().asString());
-            if (!Main.psqlManager.isOperationSuccessful()) {
+            long dailyTaken = Main.dbManager.getDailyTaken(user.getId().asString());
+            if (!Main.dbManager.isOperationSuccessful()) {
                 //if the user does not exist already in our database
                 //then we must create the user
                 //in this case dailyTaken will be 0
-                Main.psqlManager.addAccount(user.getId().asString());
+                Main.dbManager.addAccount(user.getId().asString());
             }
             //System.currentTimeMillis() gets the current system time in milliseconds after unix epoch
             if (dailyTaken + ONE_DAY <= System.currentTimeMillis()) {
                 //if one day is over, then we must give the bonus to the user
-                Main.psqlManager.deposit(user.getId().asString(), DAILY_ALLOWANCE);
+                Main.dbManager.deposit(user.getId().asString(), DAILY_ALLOWANCE);
                 //this gives the user confirmation
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.DEEP_LILAC);
@@ -40,7 +40,7 @@ public class DailyCommand implements Command {
                     embed.setTitle("Get Daily Allowance");
                 }).block();
                 //since the daily was taken, we set the dailytaken entry of the user to the current time
-                Main.psqlManager.setDailyTaken(user.getId().asString(), System.currentTimeMillis());
+                Main.dbManager.setDailyTaken(user.getId().asString(), System.currentTimeMillis());
             } else {
                 //if the user has already taken his or her daily allowance in the last 24 hours
                 event.getMessage().getChannel().block().createEmbed((embed) -> {

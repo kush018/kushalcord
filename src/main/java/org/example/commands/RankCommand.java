@@ -24,7 +24,7 @@ public class RankCommand implements Command {
             String userId = event.getMessage().getAuthor().get().getId().asString();
             try {
                 //get the xp of the user from the database using the userId and guildId
-                long xp = psqlManager.getXpOfUser(userId, guildId);
+                long xp = dbManager.getXpOfUser(userId, guildId);
                 //calculates the level which the user is it using the calculateLevel() function
                 long level = calculateLevel(xp);
                 //finds out the xp the user needs to reach to get to the next level
@@ -35,7 +35,7 @@ public class RankCommand implements Command {
                     try {
                         embed.setDescription("Ur xp: " + xp + "/" + nextLvlXp +
                                 "\n" + "Ur lvl: " + level +
-                                "\n" + "Ur rank: " + (psqlManager.getRankOfUser(userId, guildId) + 1));
+                                "\n" + "Ur rank: " + (dbManager.getRankOfUser(userId, guildId) + 1));
                     } catch (SQLException throwables) {
                         throwables.printStackTrace();
                     }
@@ -50,7 +50,7 @@ public class RankCommand implements Command {
                 String guildId = event.getMessage().getGuildId().get().asString();
                 String userId = userIdSnowflake.asString();
                 try {
-                    long xp = psqlManager.getXpOfUser(userId, guildId);
+                    long xp = dbManager.getXpOfUser(userId, guildId);
                     long level = calculateLevel(xp);
                     long nextLvlXp = calculateXpForLvl(level + 1);
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
@@ -59,7 +59,7 @@ public class RankCommand implements Command {
                             embed.setDescription("Rank of: " + client.getUserById(userIdSnowflake).block().getUsername() +
                                     "\n" + "xp: " + xp + "/" + nextLvlXp +
                                     "\n" + "lvl: " + level +
-                                    "\n" + "rank: " + (psqlManager.getRankOfUser(userId, guildId) + 1));
+                                    "\n" + "rank: " + (dbManager.getRankOfUser(userId, guildId) + 1));
                         } catch (SQLException throwables) {
                             throwables.printStackTrace();
                         }

@@ -52,7 +52,7 @@ public class BlackJackCommand implements Command {
         long balance;
         try {
             //gets the current balance of the user
-            balance = Main.psqlManager.getBalance(user.getId().asString());
+            balance = Main.dbManager.getBalance(user.getId().asString());
         } catch (SQLException e) {
             e.printStackTrace();
             return;

@@ -24,10 +24,10 @@ public class BalanceCommand implements Command {
             try {
                 //getBalance() gets the balance of a particular user from the database, given a user id
                 //user.getId().asString() gets the id of the user as a String
-                long bal = Main.psqlManager.getBalance(user.getId().asString());
-                if (!Main.psqlManager.isOperationSuccessful()) {
+                long bal = Main.dbManager.getBalance(user.getId().asString());
+                if (!Main.dbManager.isOperationSuccessful()) {
                     //if the user who issued the command does not already exist in the database the query fails, we create an entry for the user
-                    Main.psqlManager.addAccount(user.getId().asString());
+                    Main.dbManager.addAccount(user.getId().asString());
                 }
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.GRAY_CHATEAU);
@@ -43,9 +43,9 @@ public class BalanceCommand implements Command {
             for (Snowflake userId : userMentionSet) {
                 //we take the user-id for each user mentioned as a Snowflake object and print the bank balance for each user
                 try {
-                    long bal = Main.psqlManager.getBalance(userId.asString());
-                    if (!Main.psqlManager.isOperationSuccessful()) {
-                        Main.psqlManager.addAccount(userId.asString());
+                    long bal = Main.dbManager.getBalance(userId.asString());
+                    if (!Main.dbManager.isOperationSuccessful()) {
+                        Main.dbManager.addAccount(userId.asString());
                     }
                     User currentUser = Main.client.getUserById(userId).block();
                     event.getMessage().getChannel().block().createEmbed((embed) -> {

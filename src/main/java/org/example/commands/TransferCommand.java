@@ -9,7 +9,7 @@ import org.example.Command;
 import java.sql.SQLException;
 import java.util.Set;
 
-import static org.example.Main.psqlManager;
+import static org.example.Main.dbManager;
 
 public class TransferCommand implements Command {
 
@@ -48,7 +48,7 @@ public class TransferCommand implements Command {
         User user = event.getMessage().getAuthor().get();
         try {
             //if the user is trying to transfer more than he or she owns
-            if (toTransfer > psqlManager.getBalance(user.getId().asString())) {
+            if (toTransfer > dbManager.getBalance(user.getId().asString())) {
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.DARK_GOLDENROD);
                     embed.setDescription("You cant transfer more money than you own!");
@@ -74,10 +74,10 @@ public class TransferCommand implements Command {
         //if multiple users were mentioned, we only consider the first user
         Snowflake user2Id = (Snowflake)mentionIdSet.toArray()[0];
         try {
-            psqlManager.getBalance(user2Id.asString());
-            if (!psqlManager.isOperationSuccessful()) {
+            dbManager.getBalance(user2Id.asString());
+            if (!dbManager.isOperationSuccessful()) {
                 //if the bank account of the user to whom we need to transfer to does not exist, we must create it
-                psqlManager.addAccount(user2Id.asString());
+                dbManager.addAccount(user2Id.asString());
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -85,9 +85,9 @@ public class TransferCommand implements Command {
         }
         try {
             //deducts the transfer amount from the transferring user
-            psqlManager.withdraw(user.getId().asString(), toTransfer);
+            dbManager.withdraw(user.getId().asString(), toTransfer);
             //adds the transfer amount to the user to whom the transfer needs to be done
-            psqlManager.deposit(user2Id.asString(), toTransfer);
+            dbManager.deposit(user2Id.asString(), toTransfer);
         } catch (SQLException e) {
             e.printStackTrace();
         }

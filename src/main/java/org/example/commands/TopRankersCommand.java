@@ -44,7 +44,7 @@ public class TopRankersCommand implements Command {
         List<String> topRanksIds = null;
         //topRanksIds stores the ids of the users holding the top n ranks from the server leaderboard
         try {
-            topRanksIds = psqlManager.getTopFromGuildXpLeaderboard(guildId, n);
+            topRanksIds = dbManager.getTopFromGuildXpLeaderboard(guildId, n);
         } catch (SQLException e) {
             e.printStackTrace();
             return;
@@ -62,7 +62,7 @@ public class TopRankersCommand implements Command {
                 //getTag() helps get the full discord tag of the user
                 //getXpOfUser() gets the xp of a user
                 //event.getMessage().getGuildId().get().asString() gets the guildId of the message as a String
-                builder.append(i + 1).append(") ").append(client.getUserById(Snowflake.of(id)).block().getTag()).append(" - lvl ").append(calculateLevel(psqlManager.getXpOfUser(id, event.getMessage().getGuildId().get().asString()))).append("\n");
+                builder.append(i + 1).append(") ").append(client.getUserById(Snowflake.of(id)).block().getTag()).append(" - lvl ").append(calculateLevel(dbManager.getXpOfUser(id, event.getMessage().getGuildId().get().asString()))).append("\n");
             } catch (SQLException ignored) {}
         }
         int finalN = n;

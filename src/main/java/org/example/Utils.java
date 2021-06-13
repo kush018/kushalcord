@@ -34,7 +34,7 @@ public class Utils {
                     }).block();
                     try {
                         //deposits the wage of the job to the users account
-                        psqlManager.deposit(event.getMessage().getAuthor().get().getId().asString(), job.getWage());
+                        dbManager.deposit(event.getMessage().getAuthor().get().getId().asString(), job.getWage());
                     } catch (SQLException ignored) {
                     }
                 } else {
@@ -118,7 +118,7 @@ public class Utils {
                     }).block();
                     try {
                         //if the user lost, he or she loses all the money he or she betted
-                        psqlManager.withdraw(user.getId().asString(), bjGame.getToGamble());
+                        dbManager.withdraw(user.getId().asString(), bjGame.getToGamble());
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
@@ -134,7 +134,7 @@ public class Utils {
                     }).block();
                     try {
                         //we must give the user the money he or she betted
-                        psqlManager.deposit(user.getId().asString(), bjGame.getToGamble());
+                        dbManager.deposit(user.getId().asString(), bjGame.getToGamble());
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
@@ -185,24 +185,24 @@ public class Utils {
         String guildId = event.getMessage().getGuildId().get().asString();
         try {
             //adds guild to the xp system (if present it will do nothing)
-            psqlManager.addGuildToXpSystem(guildId);
+            dbManager.addGuildToXpSystem(guildId);
             //adds user to the guild xp system (if present it will do nothing)
-            psqlManager.addUserToGuildXpSystem(userId, guildId);
+            dbManager.addUserToGuildXpSystem(userId, guildId);
             //checks the last time the user sent a message in the guild
-            long lastMessageSentTime = psqlManager.getLastMessageTime(userId, guildId);
+            long lastMessageSentTime = dbManager.getLastMessageTime(userId, guildId);
             if (lastMessageSentTime + ONE_MINUTE > timeOfMessage) {
                 //if one minute has not yet passed after the last message was sent, we wont apply the message to the ranking system
                 return;
             }
             //if we are applying the message to the ranking system, we must set the last message time of the user in the guild to the time
             //of the current message
-            psqlManager.setLastMessageTimeOfUser(userId, guildId, timeOfMessage);
+            dbManager.setLastMessageTimeOfUser(userId, guildId, timeOfMessage);
             //xpToAdd stores the amount of xp to be added to the user (random value between 15 and 25)
             long xpToAdd = (long) (Math.random() * (26 - 15) + 15);
             //newXp stores the new xp which the user has right now (oldxp + xptoadd)
-            long newXp = psqlManager.getXpOfUser(userId, guildId) + xpToAdd;
+            long newXp = dbManager.getXpOfUser(userId, guildId) + xpToAdd;
             //sets the xp of the user to the new xp
-            psqlManager.setXpOfUser(userId, guildId, newXp);
+            dbManager.setXpOfUser(userId, guildId, newXp);
             //calculateLevel calculates the level which the user is at, given his or her xp
             if (calculateLevel(newXp) != calculateLevel(newXp - xpToAdd)) {
                 //if the level after the xp addition is different from the level before xp addition, it means that the level has increased

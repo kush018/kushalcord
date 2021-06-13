@@ -83,9 +83,9 @@ public class Main {
     public static final int MAX_RANKS_TO_BE_DISPLAYED = 15;
 
     /**
-     * This is the PSQLManager object.
+     * This is the DBManager object.
      */
-    public static PSQLManager psqlManager;
+    public static DBManager dbManager;
 
     /**
      * It is a HashMap which Maps a discord user with his or her spam cooldown (time left before cooldown is over). AtomicLong is used to store cooldown to ensure thread-safety. The cooldown value reduces by one every second. When the cooldown is zero the user can spam again.
@@ -134,22 +134,24 @@ public class Main {
 
         commandsMap.put("help", new HelpCommand());
 
-        /* Initialises the PSQLManager object */ 
+        /* Initialises the DBManager object */
         try {
-            psqlManager = new PSQLManager();
-        } catch (ClassNotFoundException | SQLException e) {
-            //on creation of the PSQLManager object, the constructor may throw some exceptions which are caught here
+            dbManager = new DBManager();
+        } catch (SQLException e) {
+            //on creation of the DBManager object, the constructor may throw some exceptions which are caught here
             //on catching these exceptions, the program simply prints the stacktrace to stdout and end the program as the bot cannot function properly without a database
             e.printStackTrace();
             return;
         }
 
-        if (!psqlManager.isPsqlManagerCreatedSuccessfully()) {
+        if (!dbManager.isDbManagerCreatedSuccessfully()) {
             //this happens when the "address", username or password have not been configured correctly, or do not exist
             //in which case the connection to the database cannot be set up and the program terminates
             System.out.println("Unable to set up connection to the database.");
             return;
         }
+
+        dbManager.createBankTable();
 
         //FileReader object create to read from the file containing the API key for the discord bot
         FileReader fileReader;
@@ -339,7 +341,7 @@ public class Main {
                         String userId = event.getUser().getId().asString();
                         try {
                             //removes the user from the xp system of the server as he or she has left or been kicked
-                            psqlManager.removeUserFromGuildXpSystem(userId, guildId);
+                            dbManager.removeUserFromGuildXpSystem(userId, guildId);
                         } catch (SQLException ignored) {
                         }
                     } catch (Exception e) {
@@ -356,7 +358,7 @@ public class Main {
                             String guildId = event.getGuildId().asString();
                             try {
                                 //removes guild from xp system because the guild is essentially "deleted" and continuing to keep it will just waste space
-                                psqlManager.removeGuildFromXpSystem(guildId);
+                                dbManager.removeGuildFromXpSystem(guildId);
                             } catch (SQLException ignored) {
                             }
                         }
