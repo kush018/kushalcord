@@ -4,14 +4,18 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.rest.util.Color;
 import org.example.Command;
+import org.example.Main;
+import org.example.Utils;
 
 import java.sql.SQLException;
 import java.util.List;
 
-import static org.example.Main.*;
-import static org.example.Utils.*;
-
 public class TopRankersCommand implements Command {
+
+    /**
+     * When a user uses the "toprankers" command, he or she can specify the number of ranks to be displayed (from the message ranking system). This defines the maximum limit of ranks that can be displayed.
+     */
+    public static final int MAX_RANKS_TO_BE_DISPLAYED = 15;
 
     @Override
     public void execute(MessageCreateEvent event, String[] argv, String argvStr) {
@@ -44,7 +48,7 @@ public class TopRankersCommand implements Command {
         List<String> topRanksIds = null;
         //topRanksIds stores the ids of the users holding the top n ranks from the server leaderboard
         try {
-            topRanksIds = dbManager.getTopFromGuildXpLeaderboard(guildId, n);
+            topRanksIds = Main.dbManager.getTopFromGuildXpLeaderboard(guildId, n);
         } catch (SQLException e) {
             e.printStackTrace();
             return;
@@ -62,7 +66,7 @@ public class TopRankersCommand implements Command {
                 //getTag() helps get the full discord tag of the user
                 //getXpOfUser() gets the xp of a user
                 //event.getMessage().getGuildId().get().asString() gets the guildId of the message as a String
-                builder.append(i + 1).append(") ").append(client.getUserById(Snowflake.of(id)).block().getTag()).append(" - lvl ").append(calculateLevel(dbManager.getXpOfUser(id, event.getMessage().getGuildId().get().asString()))).append("\n");
+                builder.append(i + 1).append(") ").append(Main.client.getUserById(Snowflake.of(id)).block().getTag()).append(" - lvl ").append(Utils.calculateLevel(Main.dbManager.getXpOfUser(id, event.getMessage().getGuildId().get().asString()))).append("\n");
             } catch (SQLException ignored) {}
         }
         int finalN = n;

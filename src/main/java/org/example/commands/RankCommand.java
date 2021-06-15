@@ -4,12 +4,11 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.rest.util.Color;
 import org.example.Command;
+import org.example.Main;
+import org.example.Utils;
 
 import java.sql.SQLException;
 import java.util.Set;
-
-import static org.example.Main.*;
-import static org.example.Utils.*;
 
 public class RankCommand implements Command {
 
@@ -24,18 +23,18 @@ public class RankCommand implements Command {
             String userId = event.getMessage().getAuthor().get().getId().asString();
             try {
                 //get the xp of the user from the database using the userId and guildId
-                long xp = dbManager.getXpOfUser(userId, guildId);
+                long xp = Main.dbManager.getXpOfUser(userId, guildId);
                 //calculates the level which the user is it using the calculateLevel() function
-                long level = calculateLevel(xp);
+                long level = Utils.calculateLevel(xp);
                 //finds out the xp the user needs to reach to get to the next level
-                long nextLvlXp = calculateXpForLvl(level + 1);
+                long nextLvlXp = Utils.calculateXpForLvl(level + 1);
                 //getRankOfUser() returns the rank of the user
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
                     embed.setColor(Color.MAGENTA);
                     try {
                         embed.setDescription("Ur xp: " + xp + "/" + nextLvlXp +
                                 "\n" + "Ur lvl: " + level +
-                                "\n" + "Ur rank: " + (dbManager.getRankOfUser(userId, guildId) + 1));
+                                "\n" + "Ur rank: " + (Main.dbManager.getRankOfUser(userId, guildId) + 1));
                     } catch (SQLException throwables) {
                         throwables.printStackTrace();
                     }
@@ -50,16 +49,16 @@ public class RankCommand implements Command {
                 String guildId = event.getMessage().getGuildId().get().asString();
                 String userId = userIdSnowflake.asString();
                 try {
-                    long xp = dbManager.getXpOfUser(userId, guildId);
-                    long level = calculateLevel(xp);
-                    long nextLvlXp = calculateXpForLvl(level + 1);
+                    long xp = Main.dbManager.getXpOfUser(userId, guildId);
+                    long level = Utils.calculateLevel(xp);
+                    long nextLvlXp = Utils.calculateXpForLvl(level + 1);
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.MAGENTA);
                         try {
-                            embed.setDescription("Rank of: " + client.getUserById(userIdSnowflake).block().getUsername() +
+                            embed.setDescription("Rank of: " + Main.client.getUserById(userIdSnowflake).block().getUsername() +
                                     "\n" + "xp: " + xp + "/" + nextLvlXp +
                                     "\n" + "lvl: " + level +
-                                    "\n" + "rank: " + (dbManager.getRankOfUser(userId, guildId) + 1));
+                                    "\n" + "rank: " + (Main.dbManager.getRankOfUser(userId, guildId) + 1));
                         } catch (SQLException throwables) {
                             throwables.printStackTrace();
                         }

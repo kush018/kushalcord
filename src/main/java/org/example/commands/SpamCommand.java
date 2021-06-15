@@ -5,12 +5,22 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Color;
 import org.example.Command;
+import org.example.Main;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.example.Main.*;
-
 public class SpamCommand implements Command {
+
+    /**
+     * When a user uses the "spam" command a cooldown is required before he or she can use the command again. The spam cooldown is decided by picking a random number between a lower and upper limit. This is the lower limit. (in seconds)
+     */
+    public static final long SPAM_TIME_OUT_MIN = 150;
+    /**
+     * When a user uses the "spam" command a cooldown is required before he or she can use the command again. The spam cooldown is decided by picking a random number between a lower and upper limit. This is the upper limit. (in seconds)
+     */
+    public static final long SPAM_TIME_OUT_MAX = 300;
+
+    public static final int MAX_SPAM_LIMIT = 10;
 
     @Override
     public void execute(MessageCreateEvent event, String[] argv, String argvStr) {
@@ -20,14 +30,13 @@ public class SpamCommand implements Command {
         User spammer = event.getMessage().getAuthor().get();
         try {
             //gets the amount of seconds left as an AtomicLong for the cooldown to get over
-            if (userSpamCooldownTimerMap.get(spammer) == null || userSpamCooldownTimerMap.get(spammer).get() == 0) {
+            if (Main.userSpamCooldownTimerMap.get(spammer) == null || Main.userSpamCooldownTimerMap.get(spammer).get() == 0) {
                 //if its zero, that means the cooldown is over
                 //if its null, that means that the user has not even spammed yet
                 //either way, we let the user spam
                 //times stores the number of times the user wants the bot to spam (it is the first argument)
                 int times = Integer.parseInt(argv[0]);
-                // TODO Make it such that the maximum spam limit and spam cooldown is all in this class
-                if (times > 10) {
+                if (times > MAX_SPAM_LIMIT) {
                     //if the user wants the bot to spam too many times, above the max spam limit, we shouldn't allow him or her to do so and the comamnd is simply ignored
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
                         embed.setColor(Color.PINK);
@@ -62,7 +71,7 @@ public class SpamCommand implements Command {
                 //the userSpamCooldownTimerMap maps a User with the time left before cooldown is complete in seconds
                 //so here, we are adding a Key-Value pair - where the Key is the "spammer" - the spamming user
                 //and the Value is a new AtomicLong object which stores a random value between SPAM_TIME_OUT_MAX and SPAM_TIME_OUT_MIN
-                userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
+                Main.userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
             } else {
                 //if the spam cooldown has not reached zero yet
                 event.getMessage().getChannel().block().createEmbed((embed) -> {
@@ -76,7 +85,7 @@ public class SpamCommand implements Command {
             //abc is not a valid number and will throw an NumberFormatException when it is attempted to convert to a number
             //if no valid number was entered, it will spam the message n times where n = times
             int times = 5;
-            if (userSpamCooldownTimerMap.get(spammer) == null || userSpamCooldownTimerMap.get(spammer).get() == 0) {
+            if (Main.userSpamCooldownTimerMap.get(spammer) == null || Main.userSpamCooldownTimerMap.get(spammer).get() == 0) {
                 //to check if the users cooldown was completed
                 //here we dont need to create a substring of argvStr because no valid argument was given telling us the number of times to spam
                 String toSpam = argvStr;
@@ -93,7 +102,7 @@ public class SpamCommand implements Command {
                     channel.createMessage(toSpam).block();
                 }
                 //adds cooldown timer for user
-                userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
+                Main.userSpamCooldownTimerMap.put(spammer, new AtomicLong((long)(Math.random() * (SPAM_TIME_OUT_MAX - SPAM_TIME_OUT_MIN) + SPAM_TIME_OUT_MIN)));
             } else {
                 //if cooldown was not completed
                 event.getMessage().getChannel().block().createEmbed((embed) -> {

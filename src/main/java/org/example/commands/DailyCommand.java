@@ -8,10 +8,29 @@ import org.example.Main;
 
 import java.sql.SQLException;
 
-import static org.example.Main.DAILY_ALLOWANCE;
-import static org.example.Main.ONE_DAY;
-
 public class DailyCommand implements Command {
+
+    /**
+     * One second in milliseconds (used for representing time)
+     */
+    public static final long ONE_SECOND = 1000;
+    /**
+     * One minute in milliseconds (used for representing time)
+     */
+    public static final long ONE_MINUTE = 60 * ONE_SECOND;
+    /**
+     * One hour in milliseconds (used for representing time)
+     */
+    public static final long ONE_HOUR = 60 * ONE_MINUTE;
+    /**
+     * One day in milliseconds (used for representing time)
+     */
+    public static final long ONE_DAY = 24 * ONE_HOUR;
+
+    /**
+     * This is the money the user receives when he or she uses the command daily. (This is the daily bonus - in kc coins)
+     */
+    public static final long DAILY_ALLOWANCE = 10000;
 
     @Override
     public void execute(MessageCreateEvent event, String[] argv, String argvStr) {
