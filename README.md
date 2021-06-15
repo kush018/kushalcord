@@ -19,18 +19,13 @@ echo "ENTER API KEY HERE" > api_key
 ```
 This will store your API key in a file.
 
-For kushalcord to work properly, it needs access to a postgresql database. So, set one up and take note of:
-1) The ip address of the database
-2) The name of the database
-3) The credentials (username and password) required to access the database
+For kushalcord to work properly, it needs access to a database
 
-Then,
-```
-echo "database_ip/database_name" > db_addr
-echo "username" > db_creds
-echo "password" >> db_creds
-```
-This will store your database details.
+kushalcord uses SQLite RDBMS for this so it should get set up automatically by the application
+
+No configuration is required - the database is stored in a file called "database.db"
+
+Make sure this file is not lost - as the loss of this file will result in loss of data i.e., user's currencies, xp etc
 
 If this setup is not done properly, the bot will not work.
 
@@ -93,3 +88,13 @@ say <something> - make the bot say something and delete the command so that it l
 
 bj <amount> - gamble your money away in a game of blackjack
 ```
+
+## Updating the bot
+
+To update the bot's source code, simply type:
+
+```
+git pull https://github.com/kush018/kushalcord.git master
+```
+
+The source code is now updated, so now build the project again and you can run the updated project.
