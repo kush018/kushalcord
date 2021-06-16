@@ -9,8 +9,18 @@ import org.example.Command;
 import org.example.Main;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class BlackJackCommand implements Command {
+
+    /**
+     * This is a list of the currently "running" blackjack games i.e, the BJGame objects that represents ongoing blackjack games - games which the users are playing.
+     */
+    public static ArrayList<BJGame> runningBJGamesList;
+
+    public BlackJackCommand() {
+        runningBJGamesList = new ArrayList<>();
+    }
 
     @Override
     public void execute(MessageCreateEvent event, String[] argv, String argvStr) {
@@ -69,7 +79,7 @@ public class BlackJackCommand implements Command {
         //creates a new BJGame object, representing the blackjack game
         BJGame bjGame = new BJGame(event, toGamble);
         //adds the object to the currently running BJGames list
-        Main.runningBJGamesList.add(bjGame);
+        runningBJGamesList.add(bjGame);
         //tells the user his or her cards and the valid commands
         event.getMessage().getChannel().block().createEmbed((embed) -> {
             embed.setColor(Color.DEEP_SEA);

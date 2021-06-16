@@ -4,6 +4,8 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Color;
+import org.example.commands.BlackJackCommand;
+import org.example.commands.WorkCommand;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -19,7 +21,7 @@ public class Utils {
      * @return true if the message was for the job system and the message need not be processed further
      */
     public static boolean applyMessageToJobsSystem(MessageCreateEvent event) {
-        for (Job job : currentWorkingJobsList) {
+        for (Job job : WorkCommand.currentWorkingJobsList) {
             //for each job in the current running jobs list
             if (job.checkChannel(event) && job.checkUser(event)) {
                 //if the channel and user in which the event occured are the same as that of the job
@@ -48,7 +50,7 @@ public class Utils {
                     }).block();
                 }
                 //since the job is done, we can remove it from the currentWorkingJobsList
-                currentWorkingJobsList.remove(job);
+                WorkCommand.currentWorkingJobsList.remove(job);
                 //there is no need to check for any more jobs
                 //since this message was applied to the job system, the message does not need to be processed any further
                 return true;
@@ -66,7 +68,7 @@ public class Utils {
      * @return true if the message was for the bj system and the message need not be processed further
      */
     public static boolean applyMessageToBJSystem(MessageCreateEvent event) {
-        for (BJGame bjGame : runningBJGamesList) {
+        for (BJGame bjGame : BlackJackCommand.runningBJGamesList) {
             //for each game in BJGamesList - the list of currently "running" games
             User user = event.getMessage().getAuthor().get();
             MessageChannel messageChannel = event.getMessage().getChannel().block();
@@ -93,7 +95,7 @@ public class Utils {
                         embed.setTitle("The BlackJack Casino");
                     }).block();
                     //removes the current bj game from the currently running bjgames list
-                    runningBJGamesList.remove(bjGame);
+                    BlackJackCommand.runningBJGamesList.remove(bjGame);
                     return true;
                 } else {
                     //invalid command
@@ -122,7 +124,7 @@ public class Utils {
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
-                    runningBJGamesList.remove(bjGame);
+                    BlackJackCommand.runningBJGamesList.remove(bjGame);
                 } else if (result == BJGame.STATUS_WIN) {
                     //if the user won
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
@@ -138,7 +140,7 @@ public class Utils {
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
-                    runningBJGamesList.remove(bjGame);
+                    BlackJackCommand.runningBJGamesList.remove(bjGame);
                 } else if (result == BJGame.STATUS_TIE) {
                     //if it was a tie
                     event.getMessage().getChannel().block().createEmbed((embed) -> {
@@ -149,7 +151,7 @@ public class Utils {
                         embed.setTitle("The BlackJack Casino");
                     }).block();
                     //no money is added or removed
-                    runningBJGamesList.remove(bjGame);
+                    BlackJackCommand.runningBJGamesList.remove(bjGame);
                 } else {
                     //if everything is as normal i.e., nothing special happened
                     event.getMessage().getChannel().block().createEmbed((embed) -> {

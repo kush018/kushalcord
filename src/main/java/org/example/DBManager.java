@@ -1,5 +1,9 @@
 package org.example;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,7 +18,7 @@ public class DBManager {
     /**
      * The path to the database file
      */
-    private static final String DB_FILE = "database.db";
+    private static final String DB_NAME_CONF_FILE = "conf/db_name";
 
     /**
      * The connection object, which represents a connection to the database
@@ -36,6 +40,8 @@ public class DBManager {
      */
     private boolean dbManagerCreatedSuccessfully;
 
+    private String dbFile;
+
     public DBManager() throws SQLException {
         //by default this value is false
         dbManagerCreatedSuccessfully = false;
@@ -43,8 +49,17 @@ public class DBManager {
         //no operation has been done so, it is by default true
         isSuccessful = true;
 
+        dbFile = "database.db";
+
+        try {
+            dbFile = Files.readString(Path.of(DB_NAME_CONF_FILE), StandardCharsets.UTF_16);
+        } catch (IOException e) {
+            System.out.println("An IOException occured while reading file: " + DB_NAME_CONF_FILE);
+            System.out.println("Using default database file: " + dbFile);
+        }
+
         //creates a connection object
-        connection = DriverManager.getConnection("jdbc:sqlite:" + DB_FILE);
+        connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
         //creates a "statement"
         stmt = connection.createStatement();
 

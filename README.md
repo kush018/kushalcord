@@ -23,11 +23,25 @@ For kushalcord to work properly, it needs access to a database
 
 kushalcord uses SQLite RDBMS for this so it should get set up automatically by the application
 
-No configuration is required - the database is stored in a file called "database.db"
+To configure the filepath of the database, type
+```
+echo "[DATABASE FILE PATH GOES HERE]" > db_name 
+```
+If no configuration is done - the database is stored in a file called "database.db", else it is stored in the specified file
 
 Make sure this file is not lost - as the loss of this file will result in loss of data i.e., user's currencies, xp etc
 
-If this setup is not done properly, the bot will not work.
+So that it becomes easy for the user to invite the bot to other server, we have the "invite command". For it to work properly,
+```
+echo "[BOT INVITE LINK GOES HERE]" > bot_inv
+```
+If this invite link is not set up properly, the bot wont show the invite link when the invite command is invoked
+
+This bot also has a link to its github repository which can be seen by invoking the "github" command. It is configured by:
+```
+echo "[BOT GITHUB REPO LINK GOES HERE]" > gh_repo
+```
+If this isnt configured properly, the bot wont show the github repository link when the invite command is invoked
 
 ## Deploying the discord bot
 
@@ -87,6 +101,10 @@ currently available jobs: hacker, paanwala
 say <something> - make the bot say something and delete the command so that it looks like the bot said it out of its own free will
 
 bj <amount> - gamble your money away in a game of blackjack
+
+invite - get the link to invite this bot to other servers :)
+
+github - get the link the the github repository containing the code for this bot
 ```
 
 ## Updating the bot

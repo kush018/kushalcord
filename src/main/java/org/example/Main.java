@@ -18,8 +18,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.example.Utils.*;
 
@@ -61,35 +59,16 @@ public class Main {
      */
     public static DBManager dbManager;
 
-    /**
-     * It is a HashMap which Maps a discord user with his or her spam cooldown (time left before cooldown is over). AtomicLong is used to store cooldown to ensure thread-safety. The cooldown value reduces by one every second. When the cooldown is zero the user can spam again.
-     */
-    public static HashMap<User, AtomicLong> userSpamCooldownTimerMap;
-    /**
-     * It is a HashMap which Maps a discord user with his or her work cooldown (time left before cooldown is over). AtomicLong is used to store cooldown to ensure thread-safety. The cooldown value reduces by one every second. When the cooldown is zero the user can work again.
-     */
-    public static HashMap<User, AtomicLong> userWorkCooldownTimerMap;
-
-    /**
-     * This is a list of the currently "running" jobs i.e., the Job objects that represents ongoing jobs - jobs which users are working on. CopyOnWriteArrayList is used instead of plain ArrayList for thread-safety.
-     */
-    public static CopyOnWriteArrayList<Job> currentWorkingJobsList;
-    /**
-     * This is a list of the currently "running" blackjack games i.e, the BJGame objects that represents ongoing blackjack games - games which the users are playing.
-     */
-    public static ArrayList<BJGame> runningBJGamesList;
-
     public static GatewayDiscordClient client;
 
     public static HashMap<String, Command> commandsMap;
 
+    public static Timer timer;
+
     public static void main(String[] args) {
 
         /* This part initilises objects */
-        userWorkCooldownTimerMap = new HashMap<>();
-        userSpamCooldownTimerMap = new HashMap<>();
-        currentWorkingJobsList = new CopyOnWriteArrayList<>();
-        runningBJGamesList = new ArrayList<>();
+        timer = new Timer();
 
         commandsMap = new HashMap<>();
 
@@ -105,6 +84,8 @@ public class Main {
         commandsMap.put("toprankers", new TopRankersCommand());
         commandsMap.put("transfer", new TransferCommand());
         commandsMap.put("work", new WorkCommand());
+        commandsMap.put("github", new GithubCommand());
+        commandsMap.put("invite", new InviteCommand());
 
         commandsMap.put("help", new HelpCommand());
 
@@ -173,65 +154,6 @@ public class Main {
                     //updates the bot's status on discord, saying that it is online and "watching" the value in INITIAL_BOT_STATUS
                     client.updatePresence(Presence.online(Activity.watching(INITIAL_BOT_STATUS))).block();
                 });
-		
-        //a TimerTask represents a certain task to be repeated at fixed intervals
-        //this timertask manages the spam cooldown timers for each user
-		TimerTask reduceTimeOutTask = new TimerTask() {
-            @Override
-            public void run() {
-                //for every entry (key-value pair) in the userSpamCooldownTimerMap,
-                for (Map.Entry<User, AtomicLong> entry : userSpamCooldownTimerMap.entrySet()) {
-                    //if the value of the entry is not zero
-                    if (entry.getValue().get() != 0) {
-                        //then decrement the value
-                        entry.getValue().decrementAndGet();
-                    }
-                }
-            }
-        };
-        //creates a Timer object which can run a particular timertask at fixed intervals
-        Timer timer = new Timer();
-        //the timertask reduceTimeOutTask is run every 1000 milliseconds
-        timer.scheduleAtFixedRate(reduceTimeOutTask, 0, 1000);
-
-        //manages the job timeout
-        //all users only have a spcecific amount of time for completing a job
-        //if they dont complete it in the stipulated time
-        //they wont be awarded any money
-        TimerTask checkJobsTimeOut = new TimerTask() {
-            @Override
-            public void run() {
-                //for each job in the list of currently running jobs,
-                for (Job job : currentWorkingJobsList) {
-                    if (job.isTimeOver()) {
-                        //if times up, tell the user the times up
-                        job.getWorkingChannel().createEmbed((embed) -> {
-                            embed.setColor(Color.DISCORD_WHITE);
-                            embed.setDescription("Terrible job " +
-                                    job.getWorkingUser().getUsername() + ". You are too slow.\n" +
-                                    "I will not be paying you anything for that.");
-                            embed.setTitle("Work Application");
-                        }).block();
-                        //remove the job from the list of currently running jobs as the job is not "running" anymore
-                        currentWorkingJobsList.remove(job);
-                    }
-                }
-            }
-        };
-        timer.scheduleAtFixedRate(checkJobsTimeOut, 0, 1000);
-
-        //manages the work cooldown timer for each user
-        TimerTask reduceWorkTimeOut = new TimerTask() {
-            @Override
-            public void run() {
-                for (Map.Entry<User, AtomicLong> entry : userWorkCooldownTimerMap.entrySet()) {
-                    if (entry.getValue().get() != 0) {
-                        entry.getValue().decrementAndGet();
-                    }
-                }
-            }
-        };
-        timer.scheduleAtFixedRate(reduceWorkTimeOut, 0, 1000);
 
         //when a Message is sent the MessageCreateEvent gets triggered
         client.getEventDispatcher().on(MessageCreateEvent.class)
