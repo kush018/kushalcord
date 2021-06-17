@@ -1,9 +1,5 @@
 package org.example;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.*;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,11 +10,6 @@ import java.util.List;
  * @author Kushal Galrani
 */
 public class DBManager {
-
-    /**
-     * The path to the database file
-     */
-    private static final String DB_NAME_CONF_FILE = "conf/db_name";
 
     /**
      * The connection object, which represents a connection to the database
@@ -51,11 +42,11 @@ public class DBManager {
 
         dbFile = "database.db";
 
-        try {
-            dbFile = Files.readString(Path.of(DB_NAME_CONF_FILE), StandardCharsets.UTF_16);
-        } catch (IOException e) {
-            System.out.println("An IOException occured while reading file: " + DB_NAME_CONF_FILE);
-            System.out.println("Using default database file: " + dbFile);
+        if (Main.confParser.getConfMap().get("db_name") == null) {
+            System.out.println("Unable to find attribute db_name in config file");
+            System.out.println("Using default database file name: " + dbFile);
+        } else {
+            dbFile = Main.confParser.getConfMap().get("db_name");
         }
 
         //creates a connection object

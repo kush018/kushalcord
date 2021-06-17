@@ -3,24 +3,19 @@ package org.example.commands;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.rest.util.Color;
 import org.example.Command;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import org.example.Main;
 
 public class GithubCommand implements Command {
 
     String githubRepoAddr;
 
-    public static final String GH_REPO_LINK_FILE = "conf/gh_repo";
-
     public GithubCommand() {
         githubRepoAddr = "";
-        try {
-            githubRepoAddr = Files.readString(Path.of(GH_REPO_LINK_FILE), StandardCharsets.UTF_16);
-        } catch (IOException e) {
-            System.out.println("There was an IOException while reading file: " + GH_REPO_LINK_FILE + ". Thus, the bot invite link cant be displayed");
+        githubRepoAddr = Main.confParser.getConfMap().get("gh_repo");
+        if (githubRepoAddr == null) {
+            System.out.println("Unable to find attribute gh_repo in config file.");
+            System.out.println("Bot invite link will not be shown");
+            githubRepoAddr = "";
         }
     }
 

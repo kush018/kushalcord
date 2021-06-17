@@ -12,10 +12,9 @@ import discord4j.core.object.presence.Presence;
 import discord4j.rest.util.Color;
 import org.example.commands.*;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.*;
 
@@ -25,8 +24,7 @@ public class Main {
     /**
      * Path to the file containing the API key for the discord bot, relative to the project root folder.
      */
-    public static final String APIKEY_FILE = "conf/api_key";
-
+    public static final String CONFIG_FILE_PATH = "config";
     /**
      * Prefix for the bot commands
      */
@@ -36,23 +34,6 @@ public class Main {
      * Status of the bot right after login.
      */
     public static final String INITIAL_BOT_STATUS = COMMAND_PREFIX + "help";
-
-    /**
-     * One second in milliseconds (used for representing time)
-     */
-    public static final long ONE_SECOND = 1000;
-    /**
-     * One minute in milliseconds (used for representing time)
-     */
-    public static final long ONE_MINUTE = 60 * ONE_SECOND;
-    /**
-     * One hour in milliseconds (used for representing time)
-     */
-    public static final long ONE_HOUR = 60 * ONE_MINUTE;
-    /**
-     * One day in milliseconds (used for representing time)
-     */
-    public static final long ONE_DAY = 24 * ONE_HOUR;
 
     /**
      * This is the DBManager object.
@@ -65,10 +46,19 @@ public class Main {
 
     public static Timer timer;
 
+    public static ConfParser confParser;
+
     public static void main(String[] args) {
 
         /* This part initilises objects */
         timer = new Timer();
+
+        try {
+            confParser = new ConfParser(Files.readString(Path.of(CONFIG_FILE_PATH)));
+        } catch (IOException e) {
+            System.out.println("IOException occured when reading config file");
+            return;
+        }
 
         commandsMap = new HashMap<>();
 
@@ -108,30 +98,9 @@ public class Main {
 
         dbManager.createBankTable();
 
-        //FileReader object create to read from the file containing the API key for the discord bot
-        FileReader fileReader;
-        try {
-            //initialises the FileReader object with APIKEY_FILE, which is the path to the API key, relative to the project's
-            //root directory. This creates a FileReader which can read from file at path APIKEY_FILE
-            fileReader = new FileReader(APIKEY_FILE);
-        } catch (FileNotFoundException e) {
-            //if a FileNotFoundException is thrown, it means that the APIKEY_FILE does not exist
-            System.out.println("File: " + APIKEY_FILE + " not found. Please make the file and type the discord bot's API key in it.");
-            //without the API key, a connection with discord is not possible, hence the program is terminated
-            return;
-        }
-        //creates a BufferedReader which is responsible for buffering input from the FileReader
-        //the BufferedReader buffers the input from the FileReader and returns it to the program.
-        BufferedReader reader = new BufferedReader(fileReader);
-        //the String apiKey stores our API key which is present at the first line of the API key file
-        String apiKey;
-        try {
-            //reads the first line of the file APIKEY_FILE from the FileReader and returns it as a String
-            apiKey = reader.readLine();
-        } catch (IOException e) {
-            //while reading a file an IO related exception might occur. If this happens then it is caught and an error message is printed
-            System.out.println("An IO exception occurred while reading file: " + APIKEY_FILE);
-            //since we dont have the apikey, there is no point in going any further
+        String apiKey = confParser.getConfMap().get("api_key");
+        if (apiKey == null) {
+            System.out.println("Unable to find attribute api_key in config file");
             return;
         }
 

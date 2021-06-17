@@ -3,23 +3,18 @@ package org.example.commands;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.rest.util.Color;
 import org.example.Command;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import org.example.Main;
 
 public class InviteCommand implements Command {
     String botInviteLink;
 
-    public static final String BOT_INVITE_LINK_FILE = "conf/bot_inv";
-
     public InviteCommand() {
         botInviteLink = "";
-        try {
-            botInviteLink = Files.readString(Path.of(BOT_INVITE_LINK_FILE), StandardCharsets.UTF_16);
-        } catch (IOException e) {
-            System.out.println("There was an IOException while reading file: " + BOT_INVITE_LINK_FILE + ". Thus, the bot invite link cant be displayed");
+        botInviteLink = Main.confParser.getConfMap().get("bot_inv");
+        if (botInviteLink == null) {
+            System.out.println("Unable to find attribute bot_inv in config file.");
+            System.out.println("Bot invite link will not be shown");
+            botInviteLink = "";
         }
     }
 

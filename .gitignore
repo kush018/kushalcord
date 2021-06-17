@@ -36,8 +36,8 @@ bin/
 .factorypath
 .project
 
-#the below folder contains SENSITIVE INFORMATION and must therefore be ignored
-conf/
+#the below config file contains SENSITIVE INFORMATION and must therefore be ignored
+config
 
 #database files
 *.db
