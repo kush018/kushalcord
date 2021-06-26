@@ -4,44 +4,15 @@ The kushalcord discord bot - a discord bot written in java with the help of disc
 
 ## Initial Setup
 
-In order for the bot to work, create a "bot account" in discord.
-If you don't have that set up, set one up.
+In order for the bot to work, we need to define some properties or attributes for the bot in a file called "config"
 
-Once, thats done, take note of the API key. Then, 
-```
-mkdir conf
-cd conf
-```
-This will change your directory to the newly created conf directory.
-Then,
-```
-echo "ENTER API KEY HERE" > api_key
-```
-This will store your API key in a file.
+To understand the syntax of the config file, see the demo config file: [democonfig](democonfig)
 
-For kushalcord to work properly, it needs access to a database
-
-kushalcord uses SQLite RDBMS for this so it should get set up automatically by the application
-
-To configure the filepath of the database, type
-```
-echo "[DATABASE FILE PATH GOES HERE]" > db_name 
-```
-If no configuration is done - the database is stored in a file called "database.db", else it is stored in the specified file
-
-Make sure this file is not lost - as the loss of this file will result in loss of data i.e., user's currencies, xp etc
-
-So that it becomes easy for the user to invite the bot to other server, we have the "invite command". For it to work properly,
-```
-echo "[BOT INVITE LINK GOES HERE]" > bot_inv
-```
-If this invite link is not set up properly, the bot wont show the invite link when the invite command is invoked
-
-This bot also has a link to its github repository which can be seen by invoking the "github" command. It is configured by:
-```
-echo "[BOT GITHUB REPO LINK GOES HERE]" > gh_repo
-```
-If this isnt configured properly, the bot wont show the github repository link when the invite command is invoked
+Now, set the following attributes in the config file
+api_key -> THE API KEY OF YOUR BOT
+gh_repo -> LINK TO GITHUB REPOSITORY OF BOT'S SOURCE CODE
+bot_inv -> INVITE LINK OF BOT
+db_name -> PATH TO DATABASE FILE
 
 ## Deploying the discord bot
 

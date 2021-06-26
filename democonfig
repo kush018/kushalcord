@@ -1,0 +1,34 @@
+# this is a comment
+# any line beginning with '#' is a comment
+
+# the above blank line is ignored
+
+# sets value of attribute property1 to value
+"property1" "value"
+
+# the first set of quotes represent the property/attribute name and the second set of quotes represents the value the attribute holds
+# so, only the quotes matter here, anything in between doesnt
+"property1"="value"
+"property1":"value"
+"property1"          "value"
+"property1" djfslkj fdkjslkj rewioru "value"
+"property1" ---> "value"
+# all the above declarations set property1 to value and are all okay - whatever is in between the quotes is ignored
+
+# anything on the same line after both the property and value has been declared, is ignored
+"property" "value" blablabla
+# in the above line, blablabla is ignored
+
+# if the same property is declared multiple times, then the latest declaration counts
+"property" "value1"
+"property" "value2"
+"property" "value3"
+# in this case, property is set to value3
+
+# to escape the quotation marks, use backslash '\'
+"property" : "some\"thing"
+# here property is set to some"thing
+
+# to escape the backslash, just use backslash
+"property" : "some\\thing"
+# here property is set to some\thing
