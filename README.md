@@ -49,8 +49,9 @@ docker build -t kushalcord:latest .
 touch database.db
 
 # then, run the docker image by
-docker run -v $(pwd)/config:/usr/kushalcord/config -v $(pwd)/database.db:/usr/kushalcord/database.db kushalcord:latest
+docker run -d -v $(pwd)/config:/usr/kushalcord/config -v $(pwd)/database.db:/usr/kushalcord/database.db kushalcord:latest
 # you can replace database.db with the database file you will use
+# the -d option runs the container as a background process - you can remove this if you want to 
 ```
 
 ## kushalcord user manual
