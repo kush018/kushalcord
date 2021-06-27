@@ -139,6 +139,6 @@ public class WorkCommand implements Command {
     @Override
     public String getHelpString() {
         return "work <job> - work for a job\n" +
-                "currently available jobs: hacker, paanwala";
+                "currently available jobs: hacker, robber";
     }
 }

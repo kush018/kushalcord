@@ -66,16 +66,22 @@ public class Main {
         commandsMap.put("bal", new BalanceCommand());
         commandsMap.put("bj", new BlackJackCommand());
         commandsMap.put("daily", new DailyCommand());
-        commandsMap.put("delete", new DeleteCommand());
+        //commandsMap.put("delete", new DeleteCommand());
         commandsMap.put("ping", new PingCommand());
         commandsMap.put("rank", new RankCommand());
         commandsMap.put("say", new SayCommand());
-        commandsMap.put("spam", new SpamCommand());
+        //commandsMap.put("spam", new SpamCommand());
         commandsMap.put("toprankers", new TopRankersCommand());
         commandsMap.put("transfer", new TransferCommand());
         commandsMap.put("work", new WorkCommand());
-        commandsMap.put("github", new GithubCommand());
-        commandsMap.put("invite", new InviteCommand());
+        GithubCommand ghCommand = new GithubCommand();
+        InviteCommand invCommand = new InviteCommand();
+        if (!ghCommand.githubRepoAddr.trim().equals("")) {
+            commandsMap.put("github", new GithubCommand());
+        }
+        if (!invCommand.botInviteLink.trim().equals("")) {
+            commandsMap.put("invite", new InviteCommand());
+        }
 
         commandsMap.put("help", new HelpCommand());
 

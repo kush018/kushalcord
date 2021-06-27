@@ -107,12 +107,11 @@ public class Job {
             userQuery = "Enter the *secret* code: " + userQuery;
             //sets job timeout
             jobTimeOut = 7 * ONE_SECOND;
-        } else if (jobType.equals("paanwala")) {
-            String[] userQueries = {"Spits paan on the road",
-            "Paan4life",
-            "Red teeth",
-            "bolo zubaan kesari",
-            "vimal"};
+        } else if (jobType.equals("robber")) {
+            String[] userQueries = {"send cash pls",
+            "give cash or else",
+            "cocks gun",
+            "pulls out knife"};
             //answer is a random String picked from the array userQueries
             answer = userQueries[(int)(Math.random() * userQueries.length)];
             userQuery = "Type the following: " + answer;

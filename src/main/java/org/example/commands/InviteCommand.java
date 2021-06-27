@@ -6,7 +6,7 @@ import org.example.Command;
 import org.example.Main;
 
 public class InviteCommand implements Command {
-    String botInviteLink;
+    public String botInviteLink;
 
     public InviteCommand() {
         botInviteLink = "";

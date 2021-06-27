@@ -7,7 +7,7 @@ import org.example.Main;
 
 public class GithubCommand implements Command {
 
-    String githubRepoAddr;
+    public String githubRepoAddr;
 
     public GithubCommand() {
         githubRepoAddr = "";

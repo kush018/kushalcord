@@ -220,14 +220,6 @@ public class Utils {
             long newXp = Main.dbManager.getXpOfUser(userId, guildId) + xpToAdd;
             //sets the xp of the user to the new xp
             Main.dbManager.setXpOfUser(userId, guildId, newXp);
-            //calculateLevel calculates the level which the user is at, given his or her xp
-            if (calculateLevel(newXp) != calculateLevel(newXp - xpToAdd)) {
-                //if the level after the xp addition is different from the level before xp addition, it means that the level has increased
-                //because the xp cant reduce, so the level cant reduce, so it definitely increased
-                //since the played his levelled up, we must celebrate this occasion by pinging him or her and telling what his or her new
-                //level is
-                event.getMessage().getChannel().block().createMessage("Congratulations <@" + userId + ">! Your new level is: " + calculateLevel(newXp)).block();
-            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
