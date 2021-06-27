@@ -12,7 +12,7 @@ Now, set the following attributes in the config file
 api_key -> THE API KEY OF YOUR BOT
 gh_repo -> LINK TO GITHUB REPOSITORY OF BOT'S SOURCE CODE
 bot_inv -> INVITE LINK OF BOT
-db_name -> PATH TO DATABASE FILE
+db_name -> PATH TO DATABASE FILE (optional - if not specified default database file path will be used, which is: database.db)
 
 ## Deploying the discord bot
 
@@ -29,6 +29,28 @@ chmod +x mvnw
 java -jar target/kushalcord-1.0-SNAPSHOT-jar-with-dependencies.jar
 
 # NOTE: Do not change directory to target/ and directly run the jar because the conf/ folder with all the configurations is not there in the target/ directory by default. Basically all you need to make sure is that the conf folder is in the current directory while running the .jar file.
+```
+
+### Deploying using docker
+
+```
+# first, build project 
+# for windows computers
+.\mvnw package
+# for linux computers
+chmod +x mvnw
+./mvnw package
+
+# build docker image
+docker build -t kushalcord:latest .
+
+# create an empty database file
+# (you can replace database.db with desired database file)
+touch database.db
+
+# then, run the docker image by
+docker run -v $(pwd)/config:/usr/kushalcord/config -v $(pwd)/database.db:/usr/kushalcord/database.db kushalcord:latest
+# you can replace database.db with the database file you will use
 ```
 
 ## kushalcord user manual
