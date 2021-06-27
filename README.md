@@ -69,12 +69,6 @@ ping - causes bot to reply with Pong!
 ask <question> - ask a yes/no type question to the bot to hear the answer
 (its not real its just for fun. the bot only gives random answers)
 
-spam <message> - spams a message 5 times
-spam <n> <message> - spams a message n times
-(use at your own risk lol)
-
-delete <n> - deletes the last n messages, and the delete message request
-
 bal - tells your bank balance
 bal <mention1> <mention2> ... - tells the bank balance of all the users mentioned
 
