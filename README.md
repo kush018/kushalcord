@@ -9,9 +9,13 @@ In order for the bot to work, we need to define some properties or attributes fo
 To understand the syntax of the config file, see the demo config file: [democonfig](democonfig)
 
 Now, set the following attributes in the config file
+
 api_key -> THE API KEY OF YOUR BOT
+
 gh_repo -> LINK TO GITHUB REPOSITORY OF BOT'S SOURCE CODE
+
 bot_inv -> INVITE LINK OF BOT
+
 db_name -> PATH TO DATABASE FILE (optional - if not specified default database file path will be used, which is: database.db)
 
 ## Deploying the discord bot
@@ -34,24 +38,17 @@ java -jar target/kushalcord-1.0-SNAPSHOT-jar-with-dependencies.jar
 ### Deploying using docker
 
 ```
-# first, build project 
-# for windows computers
-.\mvnw package
-# for linux computers
-chmod +x mvnw
-./mvnw package
-
-# build docker image
-docker build -t kushalcord:latest .
-
 # create an empty database file
 # (you can replace database.db with desired database file)
 touch database.db
 
-# then, run the docker image by
-docker run -d -v $(pwd)/config:/usr/kushalcord/config -v $(pwd)/database.db:/usr/kushalcord/database.db kushalcord:latest
+# create config file
+
+# run the docker image by
+docker run -d -v $(pwd)/config:/usr/kushalcord/config -v $(pwd)/database.db:/usr/kushalcord/database.db kush018/kushalcord:latest
 # you can replace database.db with the database file you will use
 # the -d option runs the container as a background process - you can remove this if you want to 
+# docker image is pulled automatically from docker hub
 ```
 
 ## kushalcord user manual

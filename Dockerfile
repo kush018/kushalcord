@@ -1,7 +1,4 @@
-FROM debian
-
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install openjdk-11-jdk -y
+FROM openjdk:11.0.11-jre-slim
 
 COPY ./target/kushalcord-1.0-SNAPSHOT-jar-with-dependencies.jar /usr/kushalcord/kushalcord.jar
 WORKDIR /usr/kushalcord
